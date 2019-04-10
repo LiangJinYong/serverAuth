@@ -1,0 +1,711 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.inter.consumer">
+
+	<!-- Version Check -->
+	<select id="getVersionCheckInfo" parameterType="map" resultType="hashmap">
+		/* getVersionCheckInfo */
+		SELECT MAX(a.current_version_code) as currentVersionCode, MAX(a.current_version_name) as currentVersionName, 
+			(SELECT IFNULL(SUM(b.is_forced_update), 0)
+	        FROM app_version b
+	        WHERE b.os_type = #{osType}
+	        AND b.current_version_code > #{currentVersionCode}
+	       	) as isForceUpdate 
+		FROM app_version a
+		WHERE a.os_type = #{osType}
+	</select>
+	
+	<select id="getEncrptedKey" resultType="string">
+		/* getEncrptedKey */
+		SELECT comm_cd_val_nm encryptedKey
+		FROM licom_comm_cd_dtl
+		WHERE comm_cd_id	= 'CRYPT_KEY'
+		AND eff_end_dt		= '99991231'
+	</select>
+
+	<!-- Register Question -->
+	<insert id="insertAppQuestion" parameterType="map">
+		/* insertAppQuestion */
+		INSERT INTO app_question (question_key, content, registration_time, app_user_id, country_cd) VALUES (null, #{content}, #{currentDatetime}, #{appUserId}, #{countryCode})
+	</insert>
+
+	<!-- Get Question List -->
+	<select id="queryAppUserCount" parameterType="string" resultType="int">
+		/* queryAppUserCount */
+		SELECT count(*) FROM app_user_token WHERE app_user_token = #{token}
+	</select>
+
+	<select id="queryQuestionAnswerList" parameterType="string" resultType="hashmap">
+		/* queryQuestionAnswerList */
+		SELECT q.question_key AS question_key, q.content AS content,
+		DATE_FORMAT(q.registration_time, '%Y-%m-%d %H:%i:%s') AS registration_time, a.answer_key, a.content AS a_content, DATE_FORMAT(a.registration_time, '%Y-%m-%d %H:%i:%s') AS a_registration_time,
+		a.question_key AS a_question_key
+		FROM app_question q LEFT JOIN app_answer a ON q.question_key = a.question_key
+		WHERE app_user_id = #{appUserId}
+		ORDER BY registration_time DESC
+	</select>
+
+	<!-- Detail Info -->
+	<select id="getOrderInfoBySequence" parameterType="string" resultType="hashmap">
+		/* 	getOrderInfoBySequence */
+		SELECT ORDER_SEQ orderNumber FROM app_seq WHERE SEQUENCE = #{sequence}
+	</select>
+	
+	<select id="getDetailInfo" parameterType="string" resultType="hashmap">
+		/* getDetailInfo */
+		SELECT lbi.BIZ_NAME, PROD_CL, PROD_NM, PROD_MDL_NM, PROD_ADDR, DATE_FORMAT(seq.PROD_MAKE_DT, '%Y/%m/%d') PROD_MAKE_DT, PROD_URL, PROD_ORG, PROD_WEIGHT, DATE_FORMAT(seq.PROD_OUT_DT, '%Y/%m/%d') PROD_OUT_DT, DATE_FORMAT(IF(seq.PROD_EXP_DT = '99991231', '', seq.PROD_EXP_DT), '%Y/%m/%d') PROD_EXP_DT, CS_CNSL_TEL_NO, PARAM_COLOR, TEXT_COLOR, DETECT_COUNT, LAST_LOCATION, DATE_FORMAT(LAST_DETECT_TIME, '%Y/%m/%d %H:%i:%s') LAST_DETECT_TIME, PROD_VAL1, PROD_VAL2, PROD_VAL3, PROD_VAL4, PROD_VAL5
+		 , (select concat('/', comm_cd_val_desc, substring_index(substring_index(fa.server_fullname, comm.comm_cd_val_nm, -1), fa.filename_map, 1), fa.server_filename)
+	        from   lian_fileattach fa
+	        where  fa.groupuuid = loi.fni_file_uuid
+	       ) as FNI_FILE_UUID_URL
+	     , (select concat('/', comm_cd_val_desc, substring_index(substring_index(fa.server_fullname, comm.comm_cd_val_nm, -1), fa.filename_map, 1), fa.server_filename)
+	        from   lian_fileattach fa
+	        where  fa.groupuuid = loi.rmi_file_uuid
+	       ) as RMI_FILE_UUID_URL
+		 , (select concat('/', comm_cd_val_desc, substring_index(substring_index(fa.server_fullname, comm.comm_cd_val_nm, -1), fa.filename_map, 1), fa.server_filename)
+	        from   lian_fileattach fa
+	        where  fa.groupuuid = loi.biz_logo_uuid
+	       ) as BIZ_LOGO_UUID_URL
+		 , seq.SEQUENCE, seq.ORDER_SEQ, loi.BLK_YN blockChainYn
+		FROM lian_order_info loi
+		INNER JOIN lian_biz_info lbi on loi.BIZ_ID = lbi.BIZ_ID 
+	    INNER JOIN app_seq seq ON loi.ORDER_SEQ = seq.ORDER_SEQ
+	    LEFT JOIN app_extended_detail_info edi ON edi.SEQUENCE = seq.SEQUENCE
+	    , (SELECT comm_cd_val_nm
+		         , comm_cd_val_desc
+			FROM   licom_comm_cd_dtl
+			WHERE  comm_cd_id       = 'FTP_SERVER_DIR'
+			AND    comm_cd_val_desc = 'detail'
+		  ) AS comm 
+		WHERE seq.SEQUENCE = #{sequence}
+	</select>
+	
+	<select id="getDetailInfoCN" parameterType="string" resultType="hashmap">
+		/* getDetailInfoCN */
+		SELECT lbi.BIZ_NAME, PROD_CL, PROD_NM, PROD_MDL_NM, PROD_ADDR, DATE_FORMAT(seq.PROD_MAKE_DT, '%Y/%m/%d') PROD_MAKE_DT, PROD_URL, PROD_ORG, PROD_WEIGHT, DATE_FORMAT(seq.PROD_OUT_DT, '%Y/%m/%d') PROD_OUT_DT, DATE_FORMAT(IF(seq.PROD_EXP_DT = '99991231', '', seq.PROD_EXP_DT), '%Y/%m/%d') PROD_EXP_DT, CS_CNSL_TEL_NO, PARAM_COLOR, TEXT_COLOR, DETECT_COUNT, LAST_LOCATION, DATE_FORMAT(LAST_DETECT_TIME, '%Y/%m/%d %H:%i:%s') LAST_DETECT_TIME, PROD_VAL1, PROD_VAL2, PROD_VAL3, PROD_VAL4, PROD_VAL5
+		 , (select concat('/', comm_cd_val_desc, substring_index(substring_index(fa.server_fullname, comm.comm_cd_val_nm, -1), fa.filename_map, 1), fa.server_filename)
+	        from   lian_fileattach fa
+	        where  fa.groupuuid = loi.fni_file_uuid
+	       ) as FNI_FILE_UUID_URL
+	     , (select concat('/', comm_cd_val_desc, substring_index(substring_index(fa.server_fullname, comm.comm_cd_val_nm, -1), fa.filename_map, 1), fa.server_filename)
+	        from   lian_fileattach fa
+	        where  fa.groupuuid = loi.rmi_file_uuid
+	       ) as RMI_FILE_UUID_URL
+		 , (select concat('/', comm_cd_val_desc, substring_index(substring_index(fa.server_fullname, comm.comm_cd_val_nm, -1), fa.filename_map, 1), fa.server_filename)
+	        from   lian_fileattach fa
+	        where  fa.groupuuid = loi.biz_logo_uuid
+	       ) as BIZ_LOGO_UUID_URL
+		 , seq.SEQUENCE, seq.ORDER_SEQ
+		FROM lian_order_info_cn loi
+		INNER JOIN lian_biz_info_cn lbi on loi.BIZ_ID = lbi.BIZ_ID 
+	    INNER JOIN app_seq seq ON loi.ORDER_SEQ = seq.ORDER_SEQ
+	    LEFT JOIN app_extended_detail_info edi ON edi.SEQUENCE = seq.SEQUENCE
+	    , (SELECT comm_cd_val_nm
+		         , comm_cd_val_desc
+			FROM   licom_comm_cd_dtl
+			WHERE  comm_cd_id       = 'FTP_SERVER_DIR'
+			AND    comm_cd_val_desc = 'detail'
+		  ) AS comm 
+		WHERE seq.SEQUENCE = #{sequence}
+	</select>
+	
+	<select id="getDetailInfoTitleList" parameterType="map" resultType="hashmap">
+		/* getDetailInfoTitleList */
+		SELECT order_col, order_col_nm, col_cl, col_dtl_nm,
+		SUBSTRING_INDEX(SUBSTRING_INDEX(col_dtl_nm, '^', 4), '^', -1) AS invalid, 
+		SUBSTRING_INDEX(SUBSTRING_INDEX(col_dtl_nm, '^', 3), '^', -1) AS valid,   
+		SUBSTRING_INDEX(SUBSTRING_INDEX(col_dtl_nm, '^', 2), '^', -1) AS timezone, 
+		SUBSTRING_INDEX(SUBSTRING_INDEX(col_dtl_nm, '^', 1), '^', -1) AS coldtlnm
+		FROM licom_order_info_mapping 
+		WHERE country_cd = #{countryCode} ORDER BY sort_no
+	</select>
+
+	<select id="getExtendedDetailInfoBySequence" parameterType="string" resultType="hashmap">
+		/* getExtendedDetailInfoBySequence */
+		SELECT sequence, detect_count detectCount, last_location lastAddress, DATE_FORMAT(last_detect_time, '%Y-%m-%d %H:%i:%s') AS lastDetectTime FROM app_extended_detail_info WHERE sequence = #{sequence}
+	</select>
+	
+	<select id="getLogisticsCount" parameterType="string" resultType="int">
+		/* getLogisticsCount */
+		SELECT COUNT(*) FROM app_physical_distribution WHERE sequence = #{sequence}
+	</select>
+	
+	<select id="getHasExpired" parameterType="string" resultType="string">
+		/* getHasExpired */
+		SELECT CASE WHEN type = 'SL' THEN 'Y' ELSE 'N' END 
+		FROM app_physical_distribution 
+		WHERE sequence = #{sequence} 
+		ORDER BY time DESC 
+		LIMIT 1
+	</select>
+
+	<!-- Physical Distribution List -->
+	<select id="queryPhysicalDistributionInfo" parameterType="string" resultType="hashmap">
+		/* queryPhysicalDistributionInfo */
+		SELECT eu.name         AS enterpriseUserName
+		     , e.name          AS enterpriseName
+		     , t1.latitude     AS latitude
+		     , t1.longitude    AS longitude
+		     , t1.time         AS time
+		     , t1.type         AS productDistributionType
+		     , t1.full_address AS fullAddress
+		     , t2.delivery_yn  AS deliveryYn
+		     , t1.dv_id        AS deliveryId
+		FROM   (SELECT latitude
+		             , longitude
+		             , time
+		             , type
+		             , full_address
+		             , enterprise_user_key
+		             , dv_id
+		      FROM   app_physical_distribution
+		      WHERE  sequence = #{sequence}
+		       ) t1
+		    , (SELECT COMM_CD_VAL                                as type_cd
+		          , COMM_CD_VAL_NM                             as type_nm
+		          , SUBSTRING_INDEX(COMM_CD_VAL_DESC, '/', 1)  as display_yn
+		          , SUBSTRING_INDEX(COMM_CD_VAL_DESC, '/', -1) as delivery_yn
+		      FROM   licom_comm_cd_dtl
+		      WHERE  comm_cd_id = 'SEQ_ST_CD'
+		      AND    country_cd = 'KR'
+		      AND    eff_end_dt = '99991231'
+		      ) t2
+		    , app_enterprise_user eu
+		     , app_enterprise      e
+		WHERE  t1.type                = t2.type_cd
+		AND    t2.display_yn          = 'Y'
+		AND    eu.enterprise_user_key = t1.enterprise_user_key
+		AND    eu.enterprise_key      = e.enterprise_key
+		ORDER BY t1.time desc
+	</select>
+
+	<!-- App Log -->
+	<select id="getTokenByUserId" parameterType="string" resultType="string">
+		/* getTokenByUserId */
+		SELECT app_user_token FROM app_user_token WHERE app_user_id = #{appUserId}
+	</select>
+	
+	<select id="getGenderBirthById" parameterType="string" resultType="hashmap">
+		/* getGenderBirthById */
+		SELECT gender, birth_dt birthDt FROM app_user WHERE app_user_id = #{appUserId}
+	</select>
+	
+	<select id="getOrderInfo" parameterType="string" resultType="hashmap">
+		/* getOrderInfo */
+		SELECT seq.order_seq orderNum, loi.prod_typ_cd prodTypeCd
+		FROM app_seq seq INNER JOIN lian_order_info loi ON seq.ORDER_SEQ = loi.ORDER_SEQ
+		WHERE sequence = #{sequence}
+	</select>
+
+	<insert id="insertFailLog" parameterType="map">
+		/* insertFailLog */
+		INSERT INTO app_log_fail (
+		   NO
+		  ,AT_DATE
+		  ,RGST_YMD
+		  ,RGST_YY
+		  ,RGST_MM
+		  ,RGST_DD
+		  ,MANUFACTURE
+		  ,DEVICE
+		  ,OS_TYPE
+		  ,OS_VERSION
+		  ,APP_USER_ID
+		  ,SEQUENCE
+		  ,LONGITUDE
+		  ,LATITUDE
+		  ,ADDR_ALL
+		  ,ADDR_PROVINCE
+		  ,ADDR_CITY
+		  ,ADDR_DISTRICT
+		  ,COUNTRY_CD
+		  ,FAIL_RESN_CD
+		  ,LOCATION_CD
+		  ,GENDER
+		  ,BIRTH_DT
+		) VALUES (
+		   NULL
+		  ,#{currentDatetime}
+		  ,#{ymd}
+		  ,#{year}
+		  ,#{month}
+		  ,#{day}
+		  ,#{manufacture}
+		  ,#{device}
+		  ,#{osType}
+		  ,#{osVersion}
+		  ,#{appUserId}
+		  ,#{sequence}
+		  ,#{longitude}
+		  ,#{latitude}
+		  ,#{fullAddress}
+		  ,#{province}
+		  ,#{city}
+		  ,#{district}
+		  ,#{countryCode}
+		  ,#{failReasonCode}
+		  ,#{locationCd}
+		  ,#{gender}
+		  ,#{birthDt}
+		)
+	</insert>
+	
+	<insert id="insertSuccessLog" parameterType="map">
+		/* insertSuccessLog */
+		INSERT INTO app_log_suc (
+		   NO
+		  ,AT_DATE
+		  ,RGST_YMD
+		  ,RGST_YY
+		  ,RGST_MM
+		  ,RGST_DD
+		  ,MANUFACTURE
+		  ,DEVICE
+		  ,OS_TYPE
+		  ,OS_VERSION
+		  ,APP_USER_ID
+		  ,ORDER_SEQ
+		  ,SEQUENCE
+		  ,LONGITUDE
+		  ,LATITUDE
+		  ,ADDR_ALL
+		  ,ADDR_PROVINCE
+		  ,ADDR_CITY
+		  ,ADDR_DISTRICT
+		  ,COUNTRY_CD
+		  ,PROD_TYP_CD
+		  ,LOCATION_CD
+		  ,GENDER
+		  ,BIRTH_DT
+		  ,WECHAT_ID
+		) VALUES (
+		   NULL
+		  ,#{currentDatetime}
+		  ,#{ymd}
+		  ,#{year}
+		  ,#{month}
+		  ,#{day}
+		  ,#{manufacture}
+		  ,#{device}
+		  ,#{osType}
+		  ,#{osVersion}
+		  ,#{appUserId}
+		  ,#{orderNum}
+		  ,#{sequence}
+		  ,#{longitude}
+		  ,#{latitude}
+		  ,#{fullAddress}
+		  ,#{province}  
+		  ,#{city}
+		  ,#{district}
+		  ,#{countryCode}
+		  ,#{prodTypeCd}
+		  ,#{locationCd}
+		  ,#{gender}
+		  ,#{birthDt}
+		  ,#{wechatId}
+		)
+	</insert>
+	
+	<insert id="insertExtendedDetailInfo">
+		/* insertExtendedDetailInfo */
+		INSERT INTO app_extended_detail_info (sequence, detect_count , current_location , last_location, current_detect_time, last_detect_time) VALUES (#{sequence}, 1, #{fullAddress}, '', #{time}, null) ON DUPLICATE KEY UPDATE detect_count = detect_count +1, last_location = current_location, current_location = #{fullAddress}, last_detect_time = current_detect_time, current_detect_time = #{currentDatetime} 
+	</insert>
+	
+	<select id="getSeqRuleCheckInfo" parameterType="map" resultType="hashmap">
+		/* getSeqRuleCheckInfo */
+		SELECT msg_id ruleCheckCode, msg_ctt ruleCheckMsg
+		FROM licom_msg 
+		WHERE country_cd = #{countryCode}
+		AND msg_cl_cd = 'R' 
+		AND DATE_FORMAT(audit_dtm, '%Y%m%d%H%i%s') BETWEEN eff_sta_dt AND eff_end_dt
+		AND msg_id = (SELECT RULE_SEQ(#{sequence}, #{appUserId}, #{latitude}, #{longitude}))
+	</select>
+	
+	<!-- ReWrite -->
+	<select id="getOrderNumberBySequence" parameterType="long" resultType="int">
+		/* getOrderNumberBySequence */
+		SELECT order_seq FROM app_seq WHERE sequence = #{sequence}
+	</select>
+	
+	<select id="queryHomepageAddr" parameterType="int" resultType="string">
+		/* queryHomepageAddr */
+		SELECT PROD_URL
+		FROM lian_order_info loi
+		WHERE loi.order_seq = #{orderNumber}
+	</select>
+	
+	<!-- Get Result Message -->
+	<select id="getResultMessage" parameterType="map" resultType="string">
+		/* getResultMessage */
+		SELECT msg_ctt FROM licom_msg WHERE msg_id = #{resultCode} AND country_cd = IFNULL(#{countryCode}, 'KR')
+	</select>
+	
+	<select id="getCommonCodeValue" parameterType="map" resultType="string">
+		/* getCommonCodeValue */
+		 SELECT COMM_CD_VAL_NM
+		 FROM licom_comm_cd_dtl 
+		 WHERE COMM_CD_VAL = #{codeValue}
+		 AND COUNTRY_CD = IFNULL(#{countryCode}, 'KR')
+		 AND EFF_END_DT = '99991231'
+	</select>
+
+	<select id="getCommonCodeValueName" parameterType="map" resultType="string">
+		/* getCommonCodeValueName */
+		 SELECT COMM_CD_VAL_NM
+		 FROM licom_comm_cd_dtl 
+		 WHERE COMM_CD_ID = #{codeId}
+		 AND COMM_CD_VAL = #{codeValue}
+		 AND COUNTRY_CD = IFNULL(#{countryCode}, 'KR')
+		 AND EFF_END_DT = '99991231'
+	</select>
+	
+	<!-- Login Id Repetion Check -->
+	<select id="selectLoginIdCount" parameterType="map" resultType="int">
+		/* selectLoginIdCount */
+		SELECT COUNT(*) FROM app_user WHERE LOGIN_ID = #{loginId} AND LOGIN_TYP_CD = #{loginTypeCd}
+	</select>
+	
+	<!-- Get Specified Sequence  -->
+	<select id="getSpecifiedSequence" parameterType="string" resultType="int">
+		/* getSpecifiedSequence */
+		SELECT NEXTVAL(#{sequenceName});
+	</select>
+	
+	<!-- Register Member, Modify User Agreements -->
+	<insert id="insertAgreementInfo" parameterType="map">
+		/* insertAgreementInfo */
+		INSERT INTO
+		app_user_agree_info_hst
+		(
+			agree_id
+		  , app_user_id
+		  , manage_yn
+		  , personal_info_yn
+		  , location_yn
+		  , marketing_yn
+		  , audit_dtm
+		)
+		VALUES
+		(
+			#{agreeId}
+		  , #{appUserId}
+		  , #{manageYn}
+		  , #{personalInfoYn}
+		  , #{locationYn}
+		  , #{marketingYn}
+		  , NOW()
+		)
+	</insert>
+	
+	<insert id="insertAppUserInfo" parameterType="map">
+		/* insertAppUserInfo */
+		INSERT INTO app_user
+		(
+			APP_USER_ID,
+			COUNTRY_CD,
+			LOGIN_ID,
+			LOGIN_PW,
+			SCRB_DT,
+			AGREE_ID,
+			AUDIT_DTM,
+			AUTH_CD,
+			LOGIN_TYP_CD,
+			GENDER,
+			BIRTH_DT
+		)
+		VALUES
+		(
+			#{appUserId},
+			#{countryCode},
+			#{loginId},
+			#{loginPw},
+			DATE_FORMAT(NOW(), '%Y%m%d'),
+			#{agreeId},
+			NOW(),
+			'AU06',
+			#{loginTypeCd},
+			#{gender},
+			#{birthDt}
+		)
+	</insert>
+	
+	<insert id="insertTokenInfo" parameterType="map">
+		/* insertTokenInfo */
+		INSERT INTO
+		app_user_token
+		(
+			app_user_token
+		  , app_user_id
+		  , audit_dtm
+		)
+		VALUES
+		(
+			#{token}
+		  , #{appUserId}
+		  , NOW()
+		)
+	</insert>
+	
+	<!-- Member Login -->
+	<select id="getUserIdByToken" parameterType="string" resultType="int">
+		/* getUserIdByToken */
+		SELECT app_user_id FROM app_user_token WHERE app_user_token = #{token}
+	</select>
+	
+	<select id="checkUserExistence" parameterType="map" resultType="hashmap">
+		/* checkUserExistence */
+		SELECT LOGIN_ID loginId FROM app_user WHERE LOGIN_ID = #{loginId} AND LOGIN_TYP_CD = #{loginTypeCd}
+	</select>
+	
+	<select id="getUserIdByIdPw" parameterType="map" resultType="int">
+		/* getUserIdByIdPw */
+		SELECT app_user_id FROM app_user WHERE login_id = #{loginId} AND login_pw = #{loginPw} AND LOGIN_TYP_CD = #{loginTypeCd}
+	</select>
+	
+	<select id="getUserInfoById" parameterType="map" resultType="hashmap">
+		/* getUserInfoById */
+		SELECT a.app_user_id appUserId
+		     , b.agree_id agreeId
+		     , a.country_cd countryCode
+		     , a.login_id loginId
+		     , a.scrb_dt scrbDt
+		     , a.gender gender
+		     , a.birth_dt birthDt
+		     , a.tmp_pw_yn tmpPwYn
+		     , a.auth_cd authCd
+		     , a.login_typ_cd loginTypeCd
+		     , b.manage_yn manageYn
+		     , b.personal_info_yn personalInfoYn
+		     , b.location_yn locationYn
+		     , b.marketing_yn marketingYn
+		     , c.img img
+		     , IFNULL((SELECT 'N'
+                 FROM   app_terms d
+                 WHERE  d.APP_CL_CD = '01'
+                 AND    d.TRM_CL_CD = '02'
+                 AND    DATE_FORMAT(b.audit_dtm, '%Y%m%d%H%i%s') BETWEEN d.eff_sta_dtm AND d.eff_end_dtm
+                 AND    d.eff_end_dtm = '99991231235959'
+                 AND    d.COUNTRY_CD = a.COUNTRY_CD
+	           ), 'Y') manageChgYn
+	         , IFNULL((SELECT 'N'
+                 FROM   app_terms d
+                 WHERE  d.APP_CL_CD = '01'
+                 AND    d.TRM_CL_CD = '01'
+                 AND    DATE_FORMAT(b.audit_dtm, '%Y%m%d%H%i%s') BETWEEN d.eff_sta_dtm AND d.eff_end_dtm
+                 AND    d.eff_end_dtm = '99991231235959'
+                 AND    d.COUNTRY_CD = a.COUNTRY_CD
+	           ), 'Y') personalInfoChgYn
+		FROM   app_user                a
+		     , app_user_agree_info_hst b
+		     , licom_img               c
+		WHERE  a.app_user_id = #{appUserId}
+		AND    b.agree_id    = a.agree_id
+		AND    c.img_id      = a.img_id
+	</select>
+	
+	<delete id="deleteTokenByUserId" parameterType="int">
+		/* deleteTokenByUserId */
+		DELETE FROM app_user_token WHERE app_user_id = #{appUserId}
+	</delete>
+	
+	<!-- Modify User Info, Report Failure, Register Member  -->
+	<insert id="insertImg" parameterType="map">
+		/* insertImg */
+		INSERT INTO licom_img (img_id, audit_id, audit_dtm, img) 
+		VALUES(#{imgId}, #{appUserId}, NOW(), #{img, jdbcType=BLOB})
+	</insert>
+	
+	<update id="updateUserImgInfo" parameterType="map">
+		/* updateUserImgInfo */
+		UPDATE app_user
+		SET    img_id = #{imgId}
+			, audit_dtm = NOW()
+		WHERE  app_user_id = #{appUserId}
+	</update>
+	
+	<update id="updateUserDtlInfo" parameterType="map">
+		/* updateUserInfo */
+		UPDATE app_user
+		SET    gender   = IF(LENGTH(#{gender})  > 0, #{gender} , gender)
+		     , birth_dt = IF(LENGTH(#{birthDt}) > 0, #{birthDt}, birth_dt)
+		     , audit_dtm = NOW()
+		WHERE  app_user_id = #{appUserId}
+	</update>
+	
+	<!-- Member Logout, Withdraw Member -->
+	<delete id="deleteUserToken" parameterType="map">
+		/* deleteUserToken */
+		DELETE FROM app_user_token WHERE app_user_id = #{appUserId} AND app_user_token = #{token}
+	</delete>
+	
+	<!-- Withdraw Member -->
+	<select id="getUserIdByTokenAndPwd" parameterType="map" resultType="int">
+		/* getUserIdByTokenAndPwd */
+		SELECT au.app_user_id appUserId 
+		FROM app_user au INNER JOIN app_user_token aut ON au.app_user_id = aut.app_user_id 
+		WHERE aut.APP_USER_TOKEN = #{token} and au.LOGIN_PW = #{loginPw}
+	</select>
+	
+	<delete id="delteUserInfo" parameterType="map">
+		/* delteUserInfo */
+		DELETE FROM app_user WHERE app_user_id = #{appUserId}
+	</delete>
+	
+	<!-- Modify User Agreements -->
+	<update id="updateUserAgreementRel" parameterType="map">
+		/* updateUserAgreementRel */
+		UPDATE app_user SET agree_id = #{agreeId}, audit_dtm = NOW() WHERE app_user_id = #{appUserId}
+	</update>
+	
+	<!-- Report Failure -->
+	<insert id="insertFailureReportInfo">
+		/* insertFailureReportInfo */
+		INSERT INTO app_fail_rpt_hst (
+		   country_cd
+		  , app_user_id
+		  , rgst_dt
+		  , rgst_tm
+		  , audit_id
+		  , audit_dtm
+		  , fail_resn_cd
+		  , img_id
+		  , mnco_nm
+		  , dev_nm
+		  , os_typ_nm
+		  , os_ver_nm
+		  , lng_val
+		  , lat_val
+		  , addr_all
+		  , addr_province
+		  , addr_city
+		  , addr_district
+		  , prod_typ_cd
+		) VALUES (
+		    #{countryCode}
+		  , #{appUserId}
+		  , #{rgstDt}
+		  , #{rgstTm}
+		  , #{appUserId}
+		  , NOW()
+		  , 'F01'
+		  , #{imgId}
+		  , #{manufacture}
+		  , #{device}
+		  , #{osType}
+		  , #{osVersion}
+		  , #{longitude}
+		  , #{latitude}
+		  , #{fullAddress}
+		  , #{province}
+		  , #{city}
+		  , #{district}
+		  , #{printKind}
+		)
+	</insert>
+	
+	<!-- Find Pwd -->
+	<select id="getUserIdByLoginId" parameterType="map" resultType="int">
+		/* getUserIdByLoginId */
+		SELECT app_user_id FROM app_user WHERE login_id = #{loginId} AND LOGIN_TYP_CD = #{loginTypeCd}
+	</select>
+	
+	<update id="updatePwd" parameterType="map">
+		/* updatePwd */	
+		UPDATE app_user SET login_pw = #{encryptedTempPwd}, tmp_pw_yn = 'Y', audit_dtm = NOW() WHERE app_user_id = #{appUserId}
+	</update>
+	
+	<!-- Modify Pwd -->
+	<select id="queryPwdCount" parameterType="map" resultType="int">
+		/* queryPwdCount */
+		SELECT COUNT(*) FROM app_user WHERE app_user_id = #{appUserId} AND login_pw = #{originalPwd}
+	</select>
+	
+	<update id="update2NewPwd" parameterType="map">
+		/* update2NewPwd */
+		UPDATE app_user SET login_pw = #{newPwd}, tmp_pw_yn = 'N', audit_dtm = NOW() WHERE app_user_id = #{appUserId}
+	</update>
+	
+	<!-- Recent Detection List, Register Question, Get Question List, Detail Info, Physical Distribution List, Token Check -->
+	<select id="getUserCountByIdToken" parameterType="map" resultType="int">
+		/* getUserCountByIdToken */
+		SELECT COUNT(*) FROM app_user_token WHERE app_user_id = #{appUserId} AND app_user_token = #{token}
+	</select>
+	
+	<select id="getSucDetectionList" parameterType="map" resultType="hashmap">
+		/* getSucDetectionList */
+		SELECT DATE_FORMAT(a.AT_DATE, '%Y-%m-%d %H:%i:%s') detectTime,
+		       a.sequence sequence,
+		       b.prod_nm prodNm,
+		       b.PROD_TYP_CD prodTypeCd,
+		       b.PROD_CL prodCl,
+		       (SELECT concat(
+		                  '/',
+		                  comm_cd_val_desc,
+		                  substring_index(
+		                     substring_index(fa.server_fullname,
+		                                     comm.comm_cd_val_nm,
+		                                     -1),
+		                     fa.filename_map,
+		                     1),
+		                  fa.server_filename)
+		                  bizLogoPath
+		        FROM lian_fileattach fa
+		        WHERE fa.groupuuid = b.biz_logo_uuid)
+		          AS bizLogoPath
+		FROM app_log_suc a,
+			 <if test="orderFlag != null">
+		     lian_order_info_cn
+		     </if>
+		     <if test="orderFlag == null">
+		     lian_order_info
+		     </if>
+		      b,
+		     (SELECT comm_cd_val_nm, comm_cd_val_desc
+		      FROM licom_comm_cd_dtl
+		      WHERE     comm_cd_id = 'FTP_SERVER_DIR'
+		            AND comm_cd_val_desc = 'detail') AS comm
+		WHERE     b.order_seq = a.order_seq
+		      AND a.app_user_id = #{appUserId}
+		      AND a.rgst_ymd BETWEEN date_format(date_add(#{currentDate}, INTERVAL -1 MONTH), '%Y%m%d')
+		                         AND #{currentDate}
+		      AND a.country_cd = #{countryCode}
+		ORDER BY a.AT_DATE DESC
+	</select>
+	
+	<select id="getFailDetectionList" parameterType="map" resultType="hashmap">
+		/* getFailDetectionList */
+		SELECT date_format(a.AT_DATE, '%Y-%m-%d %H:%i:%s') detectTime
+		FROM app_log_fail a
+		WHERE a.APP_USER_ID = #{appUserId}
+	      AND a.RGST_YMD BETWEEN date_format(date_add(#{currentDate}, INTERVAL -1 MONTH), '%Y%m%d') AND #{currentDate}
+	      AND a.COUNTRY_CD = #{countryCode}
+     ORDER BY a.AT_DATE DESC
+	</select>
+	
+	<!-- Sequence Info -->
+	<select id="getSequenceInfoList" resultType="hashmap">
+		/* getSequenceInfoList */
+		SELECT seq_sta startSeq, seq_end endSeq, app_cd appCd FROM app_seq_range
+	</select>
+	
+	<!-- Query Delivery Info -->
+	<select id="selectDeliveryInfo" parameterType="map" resultType="hashmap">
+		/* selectDeliveryInfo */
+		SELECT DATE_FORMAT(adi.location_time, '%Y-%m-%d %H:%i:%s') locationTime,
+		       adi.latitude      latitude, 
+		       adi.longitude     longitude, 
+		       aeu.NAME          enterpriseUserName, 
+		       ae.NAME           enterpriseName 
+		FROM   app_delivery_info adi, 
+		       app_enterprise ae, 
+		       app_enterprise_user aeu 
+		WHERE  adi.enterprise_user_key = aeu.enterprise_user_key 
+		       AND aeu.enterprise_key = ae.enterprise_key 
+		       AND adi.dv_id = #{deliveryId} 
+		ORDER  BY location_time DESC
+	</select>
+</mapper>

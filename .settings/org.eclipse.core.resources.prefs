@@ -1,0 +1,11 @@
+eclipse.preferences.version=1
+encoding//src/main/java/com/inter/consumer/controller/DetailInfoController.java=UTF-8
+encoding//src/main/java/com/inter/consumer/controller/RegistrationQuestionController.java=UTF-8
+encoding//src/main/java/com/inter/consumer/dao/RegistrationQuestionDao.java=UTF-8
+encoding//src/main/java/com/inter/consumer/dao/impl/RegistrationQuestionDaoImpl.java=UTF-8
+encoding//src/main/java/com/inter/consumer/service/RegistrationQuestionService.java=UTF-8
+encoding//src/main/java/com/inter/consumer/service/impl/DetailInfoServiceImpl.java=UTF-8
+encoding//src/main/java/com/inter/consumer/service/impl/RegistrationQuestionServiceImpl.java=UTF-8
+encoding//src/main/java/com/inter/consumer/service/impl/SendCertificationCodeServiceImpl.java=UTF-8
+encoding//src/main/java/com/inter/enterprise/service/impl/SendMailFmsServiceImpl.java=UTF-8
+encoding//src/main/java/com/inter/util/HttpUtil.java=UTF-8
