@@ -1,5 +1,6 @@
 package com.inter.enterprise.service.impl;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -50,19 +51,16 @@ public class EnterprisePhysicalDistributionServiceImpl implements EnterprisePhys
 	private final String[] typeArr = { "WH", "RL", "SL", "TB", "DV", "DF", "LO", "UL", "PG", "UP" };
 
 	// package related types
-	private final String[] packageTypeArr = { "LO", "UL", "PG", "UP" };
-
-	// types do not handle relationships
-	private final String[] noRelationTypeArr = { "DV", "DF", "TB", "PG", "LO" };
+	private final String[] typesDeleteParentRel = { "WH", "RL", "SL", "TB", "DV", "UL" };
 
 	@Transactional
 	public String physicalDistribution(Map<String, String> param) {
-		
+
 		Map<String, Object> result = new HashMap<String, Object>();
 		Map<String, Object> appEnterpriseUser = enterprisePhysicalDistributionDao.queryAppEnterpriseUserByToken(param);
 
 		Gson gson = new Gson();
-		
+
 		boolean isFMS = param.containsKey("FMS");
 
 		if (appEnterpriseUser != null || isFMS) {
@@ -72,156 +70,75 @@ public class EnterprisePhysicalDistributionServiceImpl implements EnterprisePhys
 
 			if ("AU01".equals(auth) || "AU02".equals(auth) || isFMS) {
 				String sequence = param.get("sequence");
-				Map<String, Integer> orderMap = enterprisePhysicalDistributionDao.queryOrderBySequence(sequence);
-				if (orderMap != null) {
-					int orderNumber = orderMap.get("orderNumber");
-					Map<String, String> bizServiceInfo = enterprisePhysicalDistributionDao
-							.queryBizServiceInfo(orderNumber);
-					if (bizServiceInfo != null) {
-						param.put("bizNm", bizServiceInfo.get("bizNm"));
-						param.put("svcNm", bizServiceInfo.get("svcNm"));
-					}
-
-					Map<String, String> appPhysicalDistributionTypeMap = enterprisePhysicalDistributionDao.queryAppPhysicalDistributionType(sequence);
-
-					String typeParam = param.get("type");
-
-					if (appPhysicalDistributionTypeMap != null) {
-
-						String typeDb = appPhysicalDistributionTypeMap.get("type");
-
-						if (!"PG".equals(typeParam) && typeDb.equals(typeParam)) {
-							result.put("resultCode", 418);
-							messageUtil.addResultMsg(param, result);
-							return gson.toJson(result);
-						}
-					}
-
-					if (Arrays.asList(typeArr).contains(typeParam)) {
-
-						Map<String, Object> paramObj = new HashMap<String, Object>();
-						paramObj.putAll(param);
-
-						List<String> sequenceList = new ArrayList<String>();
-						sequenceList.add(sequence);
-						paramObj.put("sequenceList", sequenceList);
-
-						try {
-							// Delivery
-							if ("DV".equals(typeParam)) {
-								int deliveryId = getSpecifiedSequenceDao.getSpecifiedSequence("dv_id");
-								param.put("deliveryId", String.valueOf(deliveryId));
-								paramObj.put("deliveryId", String.valueOf(deliveryId));
-
-								registerDeliveryInfoDao.insertDeliveryInfo(param);
-								
-								Map<String, Object> enterpriseInfo = registerDeliveryInfoDao.getEnterpriseInfo(param.get("enterpriseUserKey"));
-								paramObj.putAll(enterpriseInfo);
-								invokeBlockChain4Delivery(paramObj);
-
-								result.put("deliveryId", deliveryId);
-							} else if ("LO".equals(typeParam) || "PG".equals(typeParam)) {
-								String childrenSequence = param.get("childrenSequence");
-								String[] childSequenceArr = childrenSequence.split("-");
-
-								for (String childSequence : childSequenceArr) {
-									Map<String, Object> childSequenceMap = enterprisePhysicalDistributionDao
-											.selectRelationBySequence(childSequence);
-									if (childSequenceMap != null) {
-										Map<String, Object> packMap = new HashMap<>();
-//										paramObj.put("physicalDistributionKey", 0);
-										// Logistics data for CURRENTLY PACKED SEQUENCE
-										packMap.putAll(paramObj);
-										packMap.put("type", "UP");
-										
-										Long currentlyPackedChildSeq = (Long) childSequenceMap.get("childSequence");
-										packMap.put("singleSequence", currentlyPackedChildSeq);
-										enterprisePhysicalDistributionDao.insertSingleAppPhysicalDistribution(packMap);
 				
-										// Logistics data for current parent of CURRENTLY PACKED SEQUENCE
-										Long currentlyPackingParentSeq = (Long) childSequenceMap.get("parentSequence");
-										packMap.put("singleSequence", currentlyPackingParentSeq);
-										enterprisePhysicalDistributionDao.insertSingleAppPhysicalDistribution(packMap);
-										
-										// Remove current parent-child relationship
-										packMap.put("sequence", currentlyPackedChildSeq);
-										enterprisePhysicalDistributionDao.updateSequenceRelationByChildren(packMap);
-									}
-								}
-
-								paramObj.put("childSequenceList", Arrays.asList(childSequenceArr));
-
-								enterprisePhysicalDistributionDao.insertParentChildrenRelation(paramObj);
-							}
-
-							// Logistics and sequence status for the CURRENT SEQUENCE
-							paramObj.put("physicalDistributionKey", 0);
-							enterprisePhysicalDistributionDao.insertAppPhysicalDistribution(paramObj);
-							enterprisePhysicalDistributionDao.updateSequenceStatus(paramObj);
-
-							invokeBlockChain(paramObj, false);
-
-							// Logistics and sequence status for all the children of the CURRENT SEQUENCE
-							if (!("PG".equals(typeParam) || "LO".equals(typeParam))) {
-								sequenceList = enterprisePhysicalDistributionDao.selectChildrenSequence(sequence);
-								
-								for (int i = 0; sequenceList != null && i < sequenceList.size(); i++) {
-									paramObj.put("singleSequence", sequenceList.get(i));
-									enterprisePhysicalDistributionDao.insertSingleAppPhysicalDistribution(paramObj);
-									invokeBlockChain(paramObj, true);
-								}
-								
-								if (sequenceList != null && sequenceList.size() > 0) {
-									paramObj.put("sequenceList", sequenceList);
-									enterprisePhysicalDistributionDao.updateSequenceStatus(paramObj);
-								}
-							} else {
-								String childrenSequence = param.get("childrenSequence");
-								String[] childSequenceArr = childrenSequence.split("-");
-								
-								for(int i=0; childSequenceArr!=null && i<childSequenceArr.length; i++) {
-									
-									paramObj.put("singleSequence", childSequenceArr[i]);
-									enterprisePhysicalDistributionDao.insertSingleAppPhysicalDistribution(paramObj);
-									invokeBlockChain(paramObj, true);
-								}
-								
-								Map<String, Object> packMap = new HashMap<>();
-								packMap.putAll(paramObj);
-								packMap.put("sequenceList", Arrays.asList(childSequenceArr));
-								enterprisePhysicalDistributionDao.updateSequenceStatus(packMap);
-							}
-
-							if ("UP".equals(typeParam)) {
-								// Unpackage for the CURRENT SEQUENCE
-								enterprisePhysicalDistributionDao.updateSequenceRelationByChildren(paramObj);
-
-								// Unpackage for all the children of the CURRENT SEQUENCE
-								if (sequenceList != null && sequenceList.size() > 0) {
-									enterprisePhysicalDistributionDao.updateSequenceRelationByChildList(paramObj);
-								}
-							} else if (!Arrays.asList(noRelationTypeArr).contains(typeParam)) {
-								// Unpackage for the CURRENT SEQUENCE
-								enterprisePhysicalDistributionDao.updateSequenceRelationByChildren(paramObj);
-							}
-
-							String manufactureType = enterprisePhysicalDistributionDao.queryManufactureType(paramObj);
-							if ("MF".equals(manufactureType) && "RL".equals(typeParam)) {
-								enterprisePhysicalDistributionDao.updateSequenceDates(paramObj);
-								if (sequenceList != null && sequenceList.size() > 0) {
-									enterprisePhysicalDistributionDao.updateChildrenSequenceDate(paramObj);
-								}
-							}
-							result.put("resultCode", 200);
-						} catch (Exception e) {
-							e.printStackTrace();
-							result.put("resultCode", 500);
-						}
-					} else {
-						result.put("resultCode", 419);
+				String typeParam = param.get("type");
+				// get all the sequeces that need to update sequence state, insert logistics data and invoke block chain
+				if (Arrays.asList(typeArr).contains(typeParam)) {
+					
+					Map<String, Object> paramObj = new HashMap<>();
+					paramObj.putAll(param);
+					
+					if ("PG".equals(typeParam) || "LO".equals(typeParam)) {
+						String childrenSequence = param.get("childrenSequence");
+						String[] childSeqArr = childrenSequence.split("-");
+						
+						paramObj.put("childSeqList", childSeqArr);
+						enterprisePhysicalDistributionDao.insertParentChildrenRelation(paramObj);
+					} else if (Arrays.asList(typesDeleteParentRel).contains(typeParam)) {
+						enterprisePhysicalDistributionDao.removeParentRelation(paramObj);
 					}
+					
+					// Get sequences that only exist in app_seq table
+					List<String> involvedSeqs = getInvolvedSeqs(sequence, typeParam);
+					
+					boolean blockChainYn = false;
+					
+					if (involvedSeqs.size() > 0) {
+						String firstSeq = involvedSeqs.get(0);
+						String isInvokingBlockChain = enterprisePhysicalDistributionDao.isInvokingBlockChain(firstSeq);
+						if ("Y".equals(isInvokingBlockChain)) {
+							blockChainYn = true;
+						}
+					}
+					
+					updateSequenceStatus(involvedSeqs, typeParam);
+					
+					registerLogisticsData(paramObj, involvedSeqs, blockChainYn);
+					
+					if ("DV".equals(typeParam)) {
+						int deliveryId = getSpecifiedSequenceDao.getSpecifiedSequence("dv_id");
+						param.put("deliveryId", String.valueOf(deliveryId));
+						paramObj.put("deliveryId", String.valueOf(deliveryId));
+						
+						registerDeliveryInfoDao.insertDeliveryInfo(param);
+						
+						if (blockChainYn) {
+							Map<String, Object> enterpriseInfo = registerDeliveryInfoDao
+									.getEnterpriseInfo(param.get("enterpriseUserKey"));
+							paramObj.putAll(enterpriseInfo);
+							try {
+								invokeBlockChain4Delivery(paramObj);
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
+						}
+
+						result.put("deliveryId", deliveryId);
+					}
+					
+					if ("UP".equals(typeParam)) {
+						List<String> unpackingChildSeqs = new ArrayList<>();
+						unpackingChildSeqs.add(sequence);
+						List<String> allDescendentSeqs = enterprisePhysicalDistributionDao.getAllDescendentSeqs(sequence);
+						unpackingChildSeqs.addAll(allDescendentSeqs);
+						paramObj.put("unpackingChildSeqs", unpackingChildSeqs);
+						enterprisePhysicalDistributionDao.removeParentAndDescendentRelation(paramObj);
+					}
+					
+					result.put("resultCode", 200);
 				} else {
-					result.put("resultCode", 405);
+					
+					result.put("resultCode", 419);
 				}
 			} else {
 				result.put("resultCode", 401);
@@ -229,24 +146,58 @@ public class EnterprisePhysicalDistributionServiceImpl implements EnterprisePhys
 		} else {
 			result.put("resultCode", 403);
 		}
-		
+
 		messageUtil.addResultMsg(param, result);
-		
+
 		return gson.toJson(result);
 	}
 
-	private String makeJsonString(Map<String, Object> paramObj, boolean isChild) {
+	private void registerLogisticsData(Map<String, Object> paramObj, List<String> involvedSeqs, boolean blockChainYn) {
+		
+		for(String seq: involvedSeqs) {
+			paramObj.put("singleSeq", seq);
+			enterprisePhysicalDistributionDao.insertLogisticsData(paramObj);
+			
+			if (blockChainYn) {
+				try {
+					invokeBlockChain(paramObj);
+				} catch (UnsupportedEncodingException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+
+	private void updateSequenceStatus(List<String> involvedSeqs, String typeParam) {
+		if (involvedSeqs.size() > 0) {
+			Map<String, Object> param = new HashMap<>();
+			param.put("type", typeParam);
+			param.put("seqList", involvedSeqs);
+			enterprisePhysicalDistributionDao.updateSequenceStatus(param);
+		}
+	}
+
+	private List<String> getInvolvedSeqs(String sequence, String typeParam) {
+		List<String> result = new ArrayList<>();
+		
+		if ("PG".equals(typeParam)) {
+			List<String> allChildren = enterprisePhysicalDistributionDao.selectChildSeqsInclusive(sequence);
+			result.addAll(allChildren);
+		} else {
+			List<String> allDescendents = enterprisePhysicalDistributionDao.selectDescendentSeqsInclusive(sequence);
+			result.addAll(allDescendents);
+		}
+		
+		return result;
+	}
+
+	private String makeJsonString(Map<String, Object> paramObj) {
 
 		JSONObject jsonObj = new JSONObject();
-		paramObj.put("isChild", isChild);
 		Map<String, String> distInfo = enterprisePhysicalDistributionDao.getDistInfo(paramObj);
 
 		jsonObj.put("dstrb_id", getString(paramObj.get("physicalDistributionKey")));
-		if (isChild) {
-			jsonObj.put("seq", getString(paramObj.get("singleSequence")));
-		} else {
-			jsonObj.put("seq", getString(paramObj.get("sequence")));
-		}
+		jsonObj.put("seq", getString(paramObj.get("singleSeq")));
 		jsonObj.put("lat", getString(paramObj.get("latitude")));
 		jsonObj.put("lng", getString(paramObj.get("longitude")));
 		jsonObj.put("full_addr", getString(paramObj.get("fullAddress")));
@@ -273,25 +224,24 @@ public class EnterprisePhysicalDistributionServiceImpl implements EnterprisePhys
 		return obj == null ? "" : String.valueOf(obj);
 	}
 
-	private void invokeBlockChain(Map<String, Object> paramObj, boolean isChild) throws Exception {
+	private void invokeBlockChain(Map<String, Object> paramObj) throws UnsupportedEncodingException {
 
 		URIBuilder builder = new URIBuilder();
-		
+
 		Map<String, String> commCodeMap = new HashMap<>();
 		commCodeMap.put("codeId", "CHAIN_URL");
 		commCodeMap.put("codeValue", "REGISTER_DIST_DATA_IP");
-		
+
 		String ip = messageUtil.getCommonCodeValueName(commCodeMap);
-		
+
 		commCodeMap.put("codeValue", "REGISTER_DIST_DATA_PORT");
 		String port = messageUtil.getCommonCodeValueName(commCodeMap);
-		
+
 		commCodeMap.put("codeValue", "REGISTER_DIST_DATA_PATH");
 		String path = messageUtil.getCommonCodeValueName(commCodeMap);
-		
+
 		builder.setScheme("http").setHost(ip).setPort(Integer.parseInt(port)).setPath(path);
-		
-		builder.setScheme("http").setHost(ip).setPort(Integer.parseInt(port)).setPath(path);
+
 		URI requestURL = null;
 		try {
 			requestURL = builder.build();
@@ -303,8 +253,8 @@ public class EnterprisePhysicalDistributionServiceImpl implements EnterprisePhys
 		final Request request = Request.Post(requestURL);
 		request.setHeader("Content-Type", "application/json");
 
-		String jsonString = makeJsonString(paramObj, isChild);
-		
+		String jsonString = makeJsonString(paramObj);
+
 		HttpEntity entity = new ByteArrayEntity(jsonString.getBytes("UTF-8"));
 		request.body(entity);
 		Future<Content> future = async.execute(request, new FutureCallback<Content>() {
@@ -316,28 +266,28 @@ public class EnterprisePhysicalDistributionServiceImpl implements EnterprisePhys
 				System.out.println("Request completed: " + request);
 				System.out.println(content.asString());
 			}
-			
+
 			public void cancelled() {
 			}
 		});
 	}
-	
+
 	private void invokeBlockChain4Delivery(Map<String, Object> paramObj) throws Exception {
 
 		URIBuilder builder = new URIBuilder();
-		
+
 		Map<String, String> commCodeMap = new HashMap<>();
 		commCodeMap.put("codeId", "CHAIN_URL");
 		commCodeMap.put("codeValue", "REGISTER_DELIVERY_DATA_IP");
-		
+
 		String ip = messageUtil.getCommonCodeValueName(commCodeMap);
-		
+
 		commCodeMap.put("codeValue", "REGISTER_DELIVERY_DATA_PORT");
 		String port = messageUtil.getCommonCodeValueName(commCodeMap);
-		
+
 		commCodeMap.put("codeValue", "REGISTER_DELIVERY_DATA_PATH");
 		String path = messageUtil.getCommonCodeValueName(commCodeMap);
-		
+
 		builder.setScheme("http").setHost(ip).setPort(Integer.parseInt(port)).setPath(path);
 		URI requestURL = null;
 		try {
@@ -367,7 +317,7 @@ public class EnterprisePhysicalDistributionServiceImpl implements EnterprisePhys
 			}
 		});
 	}
-	
+
 	private String makeJsonString4Delivery(Map<String, Object> paramObj) {
 
 		JSONObject jsonObj = new JSONObject();

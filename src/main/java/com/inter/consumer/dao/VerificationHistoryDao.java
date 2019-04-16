@@ -18,6 +18,8 @@ public interface VerificationHistoryDao {
 
 	Map<String, String> getGenderBirthById(String appUserId);
 
-	Map<String, String> getSeqRuleCheckInfo(Map<String, String> param);
+	String getRuleCheckCode(Map<String, String> param);
+
+	String getRuleCheckMsg(Map<String, String> param);
 
 }

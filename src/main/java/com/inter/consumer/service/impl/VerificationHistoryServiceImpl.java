@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.google.gson.Gson;
+import com.inter.consumer.dao.ReportFailureDao;
 import com.inter.consumer.dao.VerificationHistoryDao;
 import com.inter.consumer.service.VerificationHistoryService;
 
@@ -20,6 +21,9 @@ public class VerificationHistoryServiceImpl implements VerificationHistoryServic
 
 	@Autowired
 	private VerificationHistoryDao verificationHistoryDao;
+	
+	@Autowired
+	private ReportFailureDao reportFailureDao;
 	
 	@Transactional
 	public String verificationHistory(Map<String, String> param) {
@@ -53,19 +57,27 @@ public class VerificationHistoryServiceImpl implements VerificationHistoryServic
 			param.put("locationCd", locationCd);
 		}
 		
-		DateFormat df = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+		DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		String ymd = "";
+		String year = "";
+		String month = "";
+		String day = "";
+		String time = "";
+		
 		Date date = null;
 		try {
 			date = df.parse(param.get("currentDatetime"));
 			
 			df = new SimpleDateFormat("yyyyMMdd");
-			String ymd = df.format(date);
+			ymd = df.format(date);
 			df = new SimpleDateFormat("yyyy");
-			String year = df.format(date);
+			year = df.format(date);
 			df = new SimpleDateFormat("MM");
-			String month = df.format(date);
+			month = df.format(date);
 			df = new SimpleDateFormat("dd");
-			String day = df.format(date);
+			day = df.format(date);
+			df = new SimpleDateFormat("HHmmss");
+			time = df.format(date);
 			
 			param.put("currentDatetime", param.get("currentDatetime"));
 			param.put("ymd", ymd);
@@ -124,10 +136,29 @@ public class VerificationHistoryServiceImpl implements VerificationHistoryServic
 				// when real success, insert or update detect count and last location
 				verificationHistoryDao.insertExtendedDetailInfo(param);
 				
-				Map<String, String> seqRuleCheckInfo = verificationHistoryDao.getSeqRuleCheckInfo(param);
+				String ruleCheckCode = verificationHistoryDao.getRuleCheckCode(param);
 				
-				if (seqRuleCheckInfo != null && seqRuleCheckInfo.get("ruleCheckCode").startsWith("A")) {
-					result.putAll(seqRuleCheckInfo);
+				if (ruleCheckCode != null && ruleCheckCode.startsWith("A")) {
+					String[] codeMsgPair = ruleCheckCode.split("\\|");
+					
+					if (codeMsgPair.length == 2) {
+						result.put("ruleCheckCode", codeMsgPair[0]);
+						result.put("ruleCheckMsg", codeMsgPair[1]);
+						
+						Map<String, Object> reportMap = new HashMap<>();
+						reportMap.putAll(param);
+						reportMap.put("rgstDt", ymd);
+						reportMap.put("rgstTm", time);
+						reportMap.put("printKind", orderInfo.get("prodTypeCd"));
+						
+						reportFailureDao.insertFailureReportInfo(reportMap);
+					} else {
+						param.put("ruleCheckCode", ruleCheckCode);
+						String ruleCheckMsg = verificationHistoryDao.getRuleCheckMsg(param);
+						
+						result.put("ruleCheckCode",ruleCheckCode);
+						result.put("ruleCheckMsg", ruleCheckMsg);;
+					}
 				}
 				
 				result.put("logType", "success");

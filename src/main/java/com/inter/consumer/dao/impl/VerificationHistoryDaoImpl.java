@@ -48,8 +48,14 @@ public class VerificationHistoryDaoImpl implements VerificationHistoryDao {
 	}
 
 	@Override
-	public Map<String, String> getSeqRuleCheckInfo(Map<String, String> param) {
-		return orderSqlSessionTemplate.selectOne(NAMESPACE + "getSeqRuleCheckInfo", param);
+	public String getRuleCheckCode(Map<String, String> param) {
+		return orderSqlSessionTemplate.selectOne(NAMESPACE + "getRuleCheckCode", param);
 	}
+
+	@Override
+	public String getRuleCheckMsg(Map<String, String> param) {
+		return orderSqlSessionTemplate.selectOne(NAMESPACE + "getRuleCheckMsg", param);
+	}
+
 
 }

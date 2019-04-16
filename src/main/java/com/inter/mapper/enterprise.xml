@@ -219,8 +219,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		SELECT seq_st_cd type FROM app_seq WHERE sequence = #{sequence}
 	</select>
 	
-	<select id="selectChildrenSequence" parameterType="string" resultType="string">
-		/* selectChildrenSequence */
+	<select id="selectDescendentSeqsInclusive" parameterType="string" resultType="string">
+		/* selectDescendentSeqsInclusive */
 		SELECT d.c_seq
 		FROM (SELECT get_child_seq_rel() AS seq
 		     FROM (SELECT @start_with := #{sequence}
@@ -231,9 +231,31 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		     ) func
 		JOIN app_seq_rel_hst d
 		ON func.seq = d.c_seq
+		JOIN app_seq aseq
+        ON d.c_seq = aseq.sequence
 		AND d.eff_end_dtm = '99991231235959'
+		UNION
+		SELECT sequence FROM app_seq WHERE sequence = #{sequence}
 	</select>
 	
+	<select id="selectChildSeqsInclusive" parameterType="string" resultType="string">
+		/* selectChildSeqsInclusive */
+		SELECT c_seq
+		FROM app_seq_rel_hst hst
+		INNER JOIN app_seq seq ON hst.c_seq = seq.sequence
+		WHERE hst.p_seq = #{sequence} AND hst.eff_end_dtm = '99991231235959'
+		UNION
+		SELECT sequence FROM app_seq WHERE sequence = #{sequence}
+	</select>
+	
+	<insert id="insertLogisticsData" parameterType="map" useGeneratedKeys="true" keyProperty="physicalDistributionKey" keyColumn="physical_distribution_key">
+		/* insertLogisticsData */
+		INSERT INTO app_physical_distribution
+		(physical_distribution_key, sequence, latitude, longitude, type, time, enterprise_user_key, dv_id, province, city, district, full_address, biz_nm, svc_nm, location_cd)
+		VALUES
+		(null, #{singleSeq}, #{latitude}, #{longitude}, #{type}, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), #{enterpriseUserKey}, #{deliveryId}, #{province}, #{city}, #{district}, #{fullAddress}, #{bizNm}, #{svcNm}, #{locationCd})
+	</insert>
+	<!-- 
 	<insert id="insertAppPhysicalDistribution" parameterType="map" useGeneratedKeys="true" keyProperty="physicalDistributionKey" keyColumn="physical_distribution_key">
 		/* insertAppPhysicalDistribution */
 		INSERT INTO app_physical_distribution 
@@ -251,7 +273,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		VALUES 
 		(null, #{singleSequence}, #{latitude}, #{longitude}, #{type}, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), #{enterpriseUserKey}, #{deliveryId}, #{province}, #{city}, #{district}, #{fullAddress}, #{bizNm}, #{svcNm}, #{locationCd})
 	</insert>
-	
+	 -->
 	<select id="getPackageStatus" parameterType="map" resultType="string">
 		/* getPackageStatus */
 		SELECT CASE WHEN (SELECT eff_end_dtm FROM app_seq_rel_hst WHERE c_seq = #{sequence} ORDER BY eff_end_dtm DESC LIMIT 1) = '99991231235959' THEN 'PG' ELSE 'UP' END AS 'Package Status'
@@ -296,13 +318,58 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		UPDATE app_seq_rel_hst SET eff_end_dtm = DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'), term_rsn_cd = #{type} WHERE p_seq = #{sequence} AND  eff_end_dtm = '99991231235959' 
 	</update>
 	
-	<update id="updateSequenceStatus" parameterType="string">
+	<update id="updateSequenceStatus" parameterType="map">
 		/* updateSequenceStatus */
 		UPDATE app_seq SET seq_st_cd = #{type} WHERE sequence IN (
-		<foreach collection="sequenceList" item="sequence" separator=", ">
+		<foreach collection="seqList" item="sequence" separator=", ">
 		#{sequence}
 		</foreach>
 		)
+	</update>
+	
+	<select id="isInvokingBlockChain" parameterType="string" resultType="string">
+		/* isInvokingBlockChain */
+		SELECT loi.blk_yn 
+		FROM app_seq seq 
+		INNER JOIN lian_order_info loi 
+		ON seq.order_seq = loi.order_seq 
+		WHERE seq.sequence = #{firstSeq}
+	</select>
+	
+	<update id="removeParentRelation" parameterType="map">
+		/* removeParentRelation */
+		UPDATE app_seq_rel_hst 
+		SET eff_end_dtm = DATE_FORMAT(NOW(), '%Y%m%d%H%i%s')
+		, term_rsn_cd = #{type} 
+		WHERE c_seq = #{sequence} 
+		AND  eff_end_dtm = '99991231235959'
+	</update>
+	
+	<select id="getAllDescendentSeqs" parameterType="string" resultType="string">
+		/* getAllDescendentSeqs */
+		SELECT d.c_seq
+		FROM (SELECT get_child_seq_rel() AS seq
+		     FROM (SELECT @start_with := #{sequence}
+		             , @seq   := @start_with
+		         ) vars
+		     JOIN app_seq_rel_hst
+		     WHERE @seq IS NOT NULL
+		     ) func
+		JOIN app_seq_rel_hst d
+		ON func.seq = d.c_seq
+		AND d.eff_end_dtm = '99991231235959'
+	</select>
+	
+	<update id="removeParentAndDescendentRelation" parameterType="map">
+		/* removeParentAndDescendentRelation */
+		UPDATE app_seq_rel_hst 
+		SET eff_end_dtm = DATE_FORMAT(NOW(), '%Y%m%d%H%i%s')
+		, term_rsn_cd = 'UP'
+		WHERE c_seq IN (
+		<foreach collection="unpackingChildSeqs" item="sequence" separator=", ">
+			#{sequence}
+		</foreach>
+		) AND  eff_end_dtm = '99991231235959'
 	</update>
 	
 	<select id="queryManufactureType" parameterType="map" resultType="string">
@@ -333,14 +400,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		, e.corporate_body_name enterpriseNm
 		, eu.name enterpriseUserNm
 		, (SELECT COMM_CD_VAL_NM FROM licom_comm_cd_dtl WHERE COMM_CD_ID = 'SEQ_ST_CD' AND COUNTRY_CD = IFNULL(#{countryCode}, 'KR') AND EFF_END_DT = '99991231' and COMM_CD_VAL = #{type}) distTypeNm
-		, (SELECT loi.PROD_NM FROM app_seq seq INNER JOIN lian_order_info loi ON seq.ORDER_SEQ = loi.ORDER_SEQ WHERE seq.SEQUENCE = 
-		<if test="isChild != true">
-		#{sequence}
-		</if>
-		<if test="isChild == true">
-		#{childSequence}
-		</if>
-		) prodNm
+		, (SELECT loi.PROD_NM FROM app_seq seq INNER JOIN lian_order_info loi ON seq.ORDER_SEQ = loi.ORDER_SEQ WHERE seq.SEQUENCE = #{singleSeq}) prodNm
 		, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s') time
 		, e.type enterpriseType
         , (SELECT comm_cd_val_nm FROM licom_comm_cd_dtl WHERE comm_cd_id = 'DASH_ENTER_TYPE' AND country_cd = IFNULL(#{countryCode}, 'KR') AND EFF_END_DT = '99991231' AND COMM_CD_VAL = e.type) enterpriseTypeName
@@ -394,8 +454,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		/* insertParentChildrenRelation */
 		INSERT INTO app_seq_rel_hst (c_seq, p_seq, eff_sta_dtm, eff_end_dtm, enterprise_user_key)
 		VALUES
-		<foreach collection="childSequenceList" item="childSequence" separator=", ">
-		(#{childSequence}, #{sequence}, DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'), '99991231235959', #{enterpriseUserKey})
+		<foreach collection="childSeqList" item="childSeq" separator=", ">
+		(#{childSeq}, #{sequence}, DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'), '99991231235959', #{enterpriseUserKey})
 		</foreach>
 	</insert>
 	

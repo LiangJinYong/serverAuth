@@ -111,9 +111,6 @@ public class VerificationHistoryCNServiceImpl implements VerificationHistoryCNSe
 				// when real success, insert or update detect count and last location
 				verificationHistoryDao.insertExtendedDetailInfo(param);
 				
-				Map<String, String> seqRuleCheckInfo = verificationHistoryDao.getSeqRuleCheckInfo(param);
-
-				result.putAll(seqRuleCheckInfo);
 				result.put("logType", "success");
 			}
 		} else {

@@ -315,14 +315,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		INSERT INTO app_extended_detail_info (sequence, detect_count , current_location , last_location, current_detect_time, last_detect_time) VALUES (#{sequence}, 1, #{fullAddress}, '', #{time}, null) ON DUPLICATE KEY UPDATE detect_count = detect_count +1, last_location = current_location, current_location = #{fullAddress}, last_detect_time = current_detect_time, current_detect_time = #{currentDatetime} 
 	</insert>
 	
-	<select id="getSeqRuleCheckInfo" parameterType="map" resultType="hashmap">
-		/* getSeqRuleCheckInfo */
-		SELECT msg_id ruleCheckCode, msg_ctt ruleCheckMsg
-		FROM licom_msg 
+	<select id="getRuleCheckCode" parameterType="map" resultType="string">
+		/* getRuleCheckCode */
+		SELECT RULE_SEQ(#{sequence}, #{appUserId}, #{latitude}, #{longitude})
+	</select>
+	
+	<select id="getRuleCheckMsg" parameterType="map" resultType="string">
+		/* getRuleCheckMsg */
+		SELECT msg_ctt ruleCheckMsg
+		FROM licom_msg
 		WHERE country_cd = #{countryCode}
 		AND msg_cl_cd = 'R' 
 		AND DATE_FORMAT(audit_dtm, '%Y%m%d%H%i%s') BETWEEN eff_sta_dt AND eff_end_dt
-		AND msg_id = (SELECT RULE_SEQ(#{sequence}, #{appUserId}, #{latitude}, #{longitude}))
+		AND msg_id = #{ruleCheckCode}
 	</select>
 	
 	<!-- ReWrite -->
@@ -584,6 +589,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		  , addr_city
 		  , addr_district
 		  , prod_typ_cd
+		  , sequence
 		) VALUES (
 		    #{countryCode}
 		  , #{appUserId}
@@ -591,7 +597,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		  , #{rgstTm}
 		  , #{appUserId}
 		  , NOW()
-		  , 'F01'
+		  ,
+		  <if test="sequence == null">
+		  'F01'
+		  </if>
+		  <if test="sequence != null">
+		  'F03'
+		  </if>
 		  , #{imgId}
 		  , #{manufacture}
 		  , #{device}
@@ -604,6 +616,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		  , #{city}
 		  , #{district}
 		  , #{printKind}
+		  , #{sequence}
 		)
 	</insert>
 	
