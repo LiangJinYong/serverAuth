@@ -64,23 +64,47 @@ public class EnterprisePhysicalDistributionServiceImpl implements EnterprisePhys
 		boolean isFMS = param.containsKey("FMS");
 
 		if (appEnterpriseUser != null || isFMS) {
-			int enterpriseUserKey = (Integer) appEnterpriseUser.get("enterprise_user_key");
-			param.put("enterpriseUserKey", String.valueOf(enterpriseUserKey));
-			String auth = (String) appEnterpriseUser.get("auth");
+
+			String auth = "";
+			if(appEnterpriseUser != null) {
+				
+				int enterpriseUserKey = (Integer) appEnterpriseUser.get("enterprise_user_key");
+				param.put("enterpriseUserKey", String.valueOf(enterpriseUserKey));
+				auth = (String) appEnterpriseUser.get("auth");
+			}
 
 			if ("AU01".equals(auth) || "AU02".equals(auth) || isFMS) {
 				String sequence = param.get("sequence");
 				
 				String typeParam = param.get("type");
+				
 				// get all the sequeces that need to update sequence state, insert logistics data and invoke block chain
 				if (Arrays.asList(typeArr).contains(typeParam)) {
 					
 					Map<String, Object> paramObj = new HashMap<>();
 					paramObj.putAll(param);
 					
+					String typeDb = enterprisePhysicalDistributionDao.queryCurrentLogisticsType(sequence);
+					
+					if (typeDb != null && typeDb.equals(typeParam) && !"UP".equals(typeParam)) {
+						result.put("resultCode", 418);
+						messageUtil.addResultMsg(param, result);
+						return gson.toJson(result);
+					}
+					
 					if ("PG".equals(typeParam) || "LO".equals(typeParam)) {
 						String childrenSequence = param.get("childrenSequence");
 						String[] childSeqArr = childrenSequence.split("-");
+						
+						for(String childSeq : childSeqArr) {
+							String hasParent = enterprisePhysicalDistributionDao.hasParentSeq(childSeq);
+							if ("Y".equals(hasParent)) {
+								HashMap<String, Object> unpackingMap = new HashMap<>();
+								unpackingMap.put("type", "UP");
+								unpackingMap.put("sequence", childSeq);
+								enterprisePhysicalDistributionDao.removeParentRelation(unpackingMap);
+							}
+						}
 						
 						paramObj.put("childSeqList", childSeqArr);
 						enterprisePhysicalDistributionDao.insertParentChildrenRelation(paramObj);
@@ -96,14 +120,16 @@ public class EnterprisePhysicalDistributionServiceImpl implements EnterprisePhys
 					if (involvedSeqs.size() > 0) {
 						String firstSeq = involvedSeqs.get(0);
 						String isInvokingBlockChain = enterprisePhysicalDistributionDao.isInvokingBlockChain(firstSeq);
-						if ("Y".equals(isInvokingBlockChain)) {
+						if ("Y".equalsIgnoreCase(isInvokingBlockChain)) {
 							blockChainYn = true;
 						}
+						
+						Map<String, Object> bizServiceInfo = enterprisePhysicalDistributionDao.selectBizServiceInfo(sequence);
+						
+						if (bizServiceInfo != null) {
+							paramObj.putAll(bizServiceInfo);
+						}
 					}
-					
-					updateSequenceStatus(involvedSeqs, typeParam);
-					
-					registerLogisticsData(paramObj, involvedSeqs, blockChainYn);
 					
 					if ("DV".equals(typeParam)) {
 						int deliveryId = getSpecifiedSequenceDao.getSpecifiedSequence("dv_id");
@@ -126,6 +152,10 @@ public class EnterprisePhysicalDistributionServiceImpl implements EnterprisePhys
 						result.put("deliveryId", deliveryId);
 					}
 					
+					updateSequenceStatus(involvedSeqs, typeParam);
+					
+					registerLogisticsData(paramObj, involvedSeqs, blockChainYn);
+					
 					if ("UP".equals(typeParam)) {
 						List<String> unpackingChildSeqs = new ArrayList<>();
 						unpackingChildSeqs.add(sequence);
@@ -135,9 +165,17 @@ public class EnterprisePhysicalDistributionServiceImpl implements EnterprisePhys
 						enterprisePhysicalDistributionDao.removeParentAndDescendentRelation(paramObj);
 					}
 					
+					String manufactureType = enterprisePhysicalDistributionDao.queryManufactureType(paramObj);
+					
+					if ("MF".equals(manufactureType) && "RL".equals(typeParam) && !isFMS) {
+						for(String seq : involvedSeqs) {
+							param.put("singleSeq", seq);
+							enterprisePhysicalDistributionDao.updateSequenceDates(param);
+						}
+					}
+					
 					result.put("resultCode", 200);
 				} else {
-					
 					result.put("resultCode", 419);
 				}
 			} else {

@@ -7,29 +7,11 @@ public interface EnterprisePhysicalDistributionDao {
 
 	Map<String, Object> queryAppEnterpriseUserByToken(Map<String, String> param);
 
-	Map<String, String> queryAppPhysicalDistributionType(String sequence);
-
-	Map<String, Integer> queryOrderBySequence(String sequence);
-
-	Map<String, String> queryBizServiceInfo(int orderNumber);
-
 	void updateSequenceStatus(Map<String, Object> param);
-
-	void updateSequenceDates(Map<String, Object> paramMap);
 
 	String queryManufactureType(Map<String, Object> paramMap);
 
-	void updateChildrenSequenceDate(Map<String, Object> paramMap);
-
-	Map<String, Object> selectRelationBySequence(String childSequence);
-
 	void insertParentChildrenRelation(Map<String, Object> paramMap);
-
-	void updateSequenceRelationByChildren(Map<String, Object> paramMap);
-
-	void updateSequenceRelationByChildList(Map<String, Object> paramMap);
-
-	void updateSequenceRelationByParent(Map<String, Object> paramMap);
 
 	Map<String, String> getDistInfo(Map<String, Object> paramMap);
 
@@ -47,6 +29,11 @@ public interface EnterprisePhysicalDistributionDao {
 
 	List<String> getAllDescendentSeqs(String sequence);
 
-	// void insertAppPhysicalDistribution(Map<String, Object> param);
-	// void insertSingleAppPhysicalDistribution(Map<String, Object> paramMap);
+	Map<String, Object> selectBizServiceInfo(String sequence);
+
+	String hasParentSeq(String childSeq);
+
+	String queryCurrentLogisticsType(String sequence);
+	
+	void updateSequenceDates(Map<String, String> paramMap);
 }

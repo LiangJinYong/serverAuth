@@ -10,4 +10,6 @@ public interface RegisterDeliveryInfoDao {
 
 	Map<String, Object> getEnterpriseInfo(String enterpriseUserKey);
 
+	String isInvokingBlockChainForDelivery(String deliveryId);
+
 }

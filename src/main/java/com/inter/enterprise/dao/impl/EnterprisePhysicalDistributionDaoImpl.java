@@ -25,21 +25,6 @@ public class EnterprisePhysicalDistributionDaoImpl implements EnterprisePhysical
 	}
 	
 	@Override
-	public Map<String, String> queryAppPhysicalDistributionType(String sequence) {
-		return orderSqlSession.selectOne(NAMESPACE + "queryAppPhysicalDistributionType", sequence);
-	}
-	
-	@Override
-	public Map<String, Integer> queryOrderBySequence(String sequence) {
-		return orderSqlSession.selectOne(NAMESPACE + "queryOrderBySequence", sequence);
-	}
-	
-	@Override
-	public Map<String, String> queryBizServiceInfo(int orderNumber) {
-		return orderSqlSession.selectOne(NAMESPACE + "queryBizServiceInfo", orderNumber);
-	}
-	
-	@Override
 	public List<String> selectDescendentSeqsInclusive(String sequence) {
 		return orderSqlSession.selectList(NAMESPACE + "selectDescendentSeqsInclusive", sequence);
 	}
@@ -49,17 +34,12 @@ public class EnterprisePhysicalDistributionDaoImpl implements EnterprisePhysical
 		return orderSqlSession.selectList(NAMESPACE + "selectChildSeqsInclusive", sequence);
 	}
 	
-//	@Override
-//	public void insertAppPhysicalDistribution(Map<String, Object> param) {
-//		orderSqlSession.insert(NAMESPACE + "insertAppPhysicalDistribution", param);
-//	}
-	
 	@Override
 	public void updateSequenceStatus(Map<String, Object> param) {
 		orderSqlSession.update(NAMESPACE + "updateSequenceStatus", param);
 	}
 	@Override
-	public void updateSequenceDates(Map<String, Object> paramMap) {
+	public void updateSequenceDates(Map<String, String> paramMap) {
 		orderSqlSession.update(NAMESPACE + "updateSequenceDates", paramMap);
 	}
 	
@@ -69,38 +49,8 @@ public class EnterprisePhysicalDistributionDaoImpl implements EnterprisePhysical
 	}
 
 	@Override
-	public void updateChildrenSequenceDate(Map<String, Object> paramMap) {
-		orderSqlSession.update(NAMESPACE + "updateChildrenSequenceDate", paramMap);
-	}
-
-	@Override
-	public Map<String, Object> selectRelationBySequence(String childSequence) {
-		return orderSqlSession.selectOne(NAMESPACE + "selectRelationBySequence", childSequence);
-	}
-
-	@Override
 	public void insertParentChildrenRelation(Map<String, Object> paramMap) {
 		orderSqlSession.insert(NAMESPACE + "insertParentChildrenRelation", paramMap);
-	}
-
-	@Override
-	public void updateSequenceRelationByChildren(Map<String, Object> paramMap) {
-		orderSqlSession.update(NAMESPACE + "updateSequenceRelationByChildren", paramMap);
-	}
-
-	@Override
-	public void updateSequenceRelationByChildList(Map<String, Object> paramMap) {
-		orderSqlSession.update(NAMESPACE + "updateSequenceRelationByChildList", paramMap);
-	}
-
-//	@Override
-//	public void insertSingleAppPhysicalDistribution(Map<String, Object> paramMap) {
-//		orderSqlSession.insert(NAMESPACE + "insertSingleAppPhysicalDistribution", paramMap);
-//	}
-
-	@Override
-	public void updateSequenceRelationByParent(Map<String, Object> paramMap) {
-		orderSqlSession.update(NAMESPACE + "updateSequenceRelationByParent", paramMap);
 	}
 
 	@Override
@@ -131,6 +81,21 @@ public class EnterprisePhysicalDistributionDaoImpl implements EnterprisePhysical
 	@Override
 	public List<String> getAllDescendentSeqs(String sequence) {
 		return orderSqlSession.selectList(NAMESPACE + "getAllDescendentSeqs", sequence);
+	}
+
+	@Override
+	public Map<String, Object> selectBizServiceInfo(String sequence) {
+		return orderSqlSession.selectOne(NAMESPACE + "selectBizServiceInfo", sequence);
+	}
+
+	@Override
+	public String hasParentSeq(String childSeq) {
+		return orderSqlSession.selectOne(NAMESPACE + "hasParentSeq", childSeq);
+	}
+
+	@Override
+	public String queryCurrentLogisticsType(String sequence) {
+		return orderSqlSession.selectOne(NAMESPACE + "queryCurrentLogisticsType", sequence);
 	}
 
 }

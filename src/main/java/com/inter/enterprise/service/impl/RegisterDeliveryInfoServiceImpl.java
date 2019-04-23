@@ -49,14 +49,20 @@ public class RegisterDeliveryInfoServiceImpl implements RegisterDeliveryInfoServ
 
 				/* Invoke Block Chain */
 				// Get enterprise info
-				String enterpriseUserKey = param.get("enterpriseUserKey");
-				Map<String, Object> enterpriseInfo = registerDeliveryInfoDao.getEnterpriseInfo(enterpriseUserKey);
+				String isInvokingBlockChain = registerDeliveryInfoDao.isInvokingBlockChainForDelivery(param.get("deliveryId"));
 
-				Map<String, Object> paramObj = new HashMap<>();
-				paramObj.putAll(param);
-				paramObj.putAll(enterpriseInfo);
+				if ("Y".equalsIgnoreCase(isInvokingBlockChain)) {
+					String enterpriseUserKey = param.get("enterpriseUserKey");
+					Map<String, Object> enterpriseInfo = registerDeliveryInfoDao.getEnterpriseInfo(enterpriseUserKey);
 
-				invokeBlockChain(paramObj);
+					Map<String, Object> paramObj = new HashMap<>();
+					paramObj.putAll(param);
+					if (enterpriseInfo != null) {
+						paramObj.putAll(enterpriseInfo);
+					}
+
+					invokeBlockChain(paramObj);
+				}
 			} else {
 				result.put("resultCode", 403);
 			}
@@ -92,19 +98,19 @@ public class RegisterDeliveryInfoServiceImpl implements RegisterDeliveryInfoServ
 	private void invokeBlockChain(Map<String, Object> paramObj) throws Exception {
 
 		URIBuilder builder = new URIBuilder();
-		
+
 		Map<String, String> commCodeMap = new HashMap<>();
 		commCodeMap.put("codeId", "CHAIN_URL");
 		commCodeMap.put("codeValue", "REGISTER_DELIVERY_DATA_IP");
-		
+
 		String ip = messageUtil.getCommonCodeValueName(commCodeMap);
-		
+
 		commCodeMap.put("codeValue", "REGISTER_DELIVERY_DATA_PORT");
 		String port = messageUtil.getCommonCodeValueName(commCodeMap);
-		
+
 		commCodeMap.put("codeValue", "REGISTER_DELIVERY_DATA_PATH");
 		String path = messageUtil.getCommonCodeValueName(commCodeMap);
-		
+
 		builder.setScheme("http").setHost(ip).setPort(Integer.parseInt(port)).setPath(path);
 		URI requestURL = null;
 		try {

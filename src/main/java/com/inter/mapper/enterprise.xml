@@ -201,23 +201,29 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	</select>
 	
 	<!-- Enterprise Physical Distribution -->
-	<select id="queryOrderBySequence" parameterType="string" resultType="hashmap">
-		/* queryOrderBySequence */
-		SELECT ORDER_SEQ orderNumber FROM app_seq WHERE SEQUENCE = #{sequence}
+	<select id="selectBizServiceInfo" parameterType="string" resultType="hashmap">
+		/* selectBizServiceInfo */
+		SELECT loi.prod_nm AS svcNm, lbi.biz_name AS bizNm
+		FROM lian_order_info loi 
+		INNER JOIN app_seq seq ON loi.order_seq = seq.order_seq
+		LEFT JOIN lian_biz_info lbi
+		ON loi.biz_id = lbi.biz_id 
+		WHERE seq.sequence = #{sequence}
 	</select>
 	
-	<select id="queryBizServiceInfo" parameterType="int" resultType="hashmap">
-		/* queryBizServiceInfo */
-		SELECT loi.PROD_NM AS svcNm, lbi.BIZ_NAME AS bizNm
-		FROM lian_order_info loi LEFT JOIN lian_biz_info lbi
-		ON loi.BIZ_ID = lbi.BIZ_ID 
-		WHERE loi.ORDER_SEQ = #{orderNumber}
-	</select>
-	
-	<select id="queryAppPhysicalDistributionType" parameterType="string" resultType="hashmap">
-		/* queryAppPhysicalDistributionType */
+	<select id="queryCurrentLogisticsType" parameterType="string" resultType="string">
+		/* queryCurrentLogisticsType */
 		SELECT seq_st_cd type FROM app_seq WHERE sequence = #{sequence}
 	</select>
+	
+	<insert id="insertParentChildrenRelation" parameterType="map">
+		/* insertParentChildrenRelation */
+		INSERT INTO app_seq_rel_hst (c_seq, p_seq, eff_sta_dtm, eff_end_dtm, enterprise_user_key)
+		VALUES
+		<foreach collection="childSeqList" item="childSeq" separator=", ">
+		(#{childSeq}, #{sequence}, DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'), '99991231235959', #{enterpriseUserKey})
+		</foreach>
+	</insert>
 	
 	<select id="selectDescendentSeqsInclusive" parameterType="string" resultType="string">
 		/* selectDescendentSeqsInclusive */
@@ -255,47 +261,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		VALUES
 		(null, #{singleSeq}, #{latitude}, #{longitude}, #{type}, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), #{enterpriseUserKey}, #{deliveryId}, #{province}, #{city}, #{district}, #{fullAddress}, #{bizNm}, #{svcNm}, #{locationCd})
 	</insert>
-	<!-- 
-	<insert id="insertAppPhysicalDistribution" parameterType="map" useGeneratedKeys="true" keyProperty="physicalDistributionKey" keyColumn="physical_distribution_key">
-		/* insertAppPhysicalDistribution */
-		INSERT INTO app_physical_distribution 
-		(physical_distribution_key, SEQUENCE, latitude, longitude, type, time, enterprise_user_key, dv_id, province, city, district, full_address, biz_nm, svc_nm, location_cd)
-		VALUES 
-		<foreach collection="sequenceList" item="sequence" separator=", ">
-			(null, #{sequence}, #{latitude}, #{longitude}, #{type}, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), #{enterpriseUserKey}, #{deliveryId}, #{province}, #{city}, #{district}, #{fullAddress}, #{bizNm}, #{svcNm}, #{locationCd})
-		</foreach>
-	</insert>
-	
-	<insert id="insertSingleAppPhysicalDistribution" parameterType="map" useGeneratedKeys="true" keyProperty="physicalDistributionKey" keyColumn="physical_distribution_key">
-		/* insertSingleAppPhysicalDistribution */
-		INSERT INTO app_physical_distribution 
-		(physical_distribution_key, SEQUENCE, latitude, longitude, type, time, enterprise_user_key, dv_id, province, city, district, full_address, biz_nm, svc_nm, location_cd)
-		VALUES 
-		(null, #{singleSequence}, #{latitude}, #{longitude}, #{type}, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), #{enterpriseUserKey}, #{deliveryId}, #{province}, #{city}, #{district}, #{fullAddress}, #{bizNm}, #{svcNm}, #{locationCd})
-	</insert>
-	 -->
-	<select id="getPackageStatus" parameterType="map" resultType="string">
-		/* getPackageStatus */
-		SELECT CASE WHEN (SELECT eff_end_dtm FROM app_seq_rel_hst WHERE c_seq = #{sequence} ORDER BY eff_end_dtm DESC LIMIT 1) = '99991231235959' THEN 'PG' ELSE 'UP' END AS 'Package Status'
-	</select>
-	
-	<update id="updateSequenceRelationByChildren" parameterType="map">
-		/* updateSequenceRelationByChildren */
-		UPDATE app_seq_rel_hst 
-		SET eff_end_dtm = DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'), term_rsn_cd = #{type} 
-		WHERE c_seq = #{sequence} AND eff_end_dtm = '99991231235959'
-	</update>
-	
-	<update id="updateSequenceRelationByChildList" parameterType="map">
-		/* updateSequenceRelationByChildList */
-		UPDATE app_seq_rel_hst 
-		SET eff_end_dtm = DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'), term_rsn_cd = #{type} 
-		WHERE c_seq IN (
-		<foreach collection="sequenceList" separator="," item="sequence">
-		#{sequence}
-		</foreach>
-		) AND eff_end_dtm = '99991231235959'
-	</update>
 	
 	<update id="updateSequenceRelationByParent" parameterType="map">
 		/* updateSequenceRelationByParent */
@@ -311,11 +276,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		eff_end_dtm = DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'),
 		</if>
 		term_rsn_cd = #{type} WHERE c_seq = #{sequence} ORDER BY eff_end_dtm DESC LIMIT 1
-	</update>
-	
-	<update id="deleteSequenceRelationByParent" parameterType="map">
-		/* deleteSequenceRelationByParent */
-		UPDATE app_seq_rel_hst SET eff_end_dtm = DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'), term_rsn_cd = #{type} WHERE p_seq = #{sequence} AND  eff_end_dtm = '99991231235959' 
 	</update>
 	
 	<update id="updateSequenceStatus" parameterType="map">
@@ -336,12 +296,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		WHERE seq.sequence = #{firstSeq}
 	</select>
 	
+	<select id="hasParentSeq" parameterType="string" resultType="string">
+		/* hasParentSeq */
+		SELECT (CASE WHEN COUNT(*) > 0 THEN 'Y' ELSE 'N' END) hasParent
+		FROM app_seq_rel_hst 
+		WHERE c_seq = #{sequence} 
+		AND eff_end_dtm = 99991231235959
+	</select>
+	
 	<update id="removeParentRelation" parameterType="map">
 		/* removeParentRelation */
 		UPDATE app_seq_rel_hst 
 		SET eff_end_dtm = DATE_FORMAT(NOW(), '%Y%m%d%H%i%s')
 		, term_rsn_cd = #{type} 
-		WHERE c_seq = #{sequence} 
+		WHERE c_seq = #{sequence}
 		AND  eff_end_dtm = '99991231235959'
 	</update>
 	
@@ -382,16 +350,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	
 	<update id="updateSequenceDates" parameterType="map">
 		/* updateSequenceDates */
-		UPDATE app_seq SET PROD_MAKE_DT = #{prodMakeDate}, PROD_OUT_DT = #{prodReleaseDtm}, PROD_EXP_DT = #{codeExpireDt} WHERE sequence = #{sequence}
-	</update>
-	
-	<update id="updateChildrenSequenceDate" parameterType="map">
-		/* updateChildrenSequenceDate */
-		UPDATE app_seq SET PROD_MAKE_DT = #{prodMakeDate}, PROD_OUT_DT = #{prodReleaseDtm}, PROD_EXP_DT = #{codeExpireDt} WHERE sequence IN (
-		<foreach collection="sequenceList" separator="," item="sequence">
-			#{sequence}
-		</foreach>
-		)
+		UPDATE app_seq SET PROD_MAKE_DT = #{prodMakeDate}, PROD_OUT_DT = #{prodReleaseDtm}, PROD_EXP_DT = #{codeExpireDt} WHERE sequence = #{singleSeq}
 	</update>
 	
 	<select id="getDistInfo" parameterType="map" resultType="hashmap">
@@ -443,21 +402,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		ORDER BY apd.time DESC
 		LIMIT 20
 	</select>
-	
-	<!-- Add Parent Child Relation -->
-	<select id="selectRelationBySequence" parameterType="string" resultType="hashmap">
-		/* selectRelationBySequence */
-		SELECT c_seq childSequence, p_seq parentSequence FROM app_seq_rel_hst WHERE c_seq = #{childSequence} AND eff_end_dtm = '99991231235959' LIMIT 1
-	</select>
-	
-	<insert id="insertParentChildrenRelation" parameterType="map">
-		/* insertParentChildrenRelation */
-		INSERT INTO app_seq_rel_hst (c_seq, p_seq, eff_sta_dtm, eff_end_dtm, enterprise_user_key)
-		VALUES
-		<foreach collection="childSeqList" item="childSeq" separator=", ">
-		(#{childSeq}, #{sequence}, DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'), '99991231235959', #{enterpriseUserKey})
-		</foreach>
-	</insert>
 	
 	<!-- Remove Parent Child Relation -->
 	<select id="getParentSequence" parameterType="string" resultType="string">
@@ -575,5 +519,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		FROM app_enterprise ae
 		INNER JOIN app_enterprise_user aeu ON ae.enterprise_key = aeu.enterprise_key
 		WHERE aeu.enterprise_user_key = #{enterpriseUserKey}
+	</select>
+	
+	<select id="isInvokingBlockChainForDelivery" parameterType="string" resultType="string">
+		/* isInvokingBlockChainForDelivery */
+		SELECT loi.blk_yn 
+		FROM app_seq seq INNER JOIN lian_order_info loi ON seq.order_seq = loi.order_seq
+		WHERE seq.SEQUENCE = 
+			(SELECT sequence
+			FROM app_physical_distribution
+			WHERE dv_id = #{deliveryId} LIMIT 1)
 	</select>
 </mapper>

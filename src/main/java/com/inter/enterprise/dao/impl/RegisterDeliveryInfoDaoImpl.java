@@ -32,5 +32,10 @@ public class RegisterDeliveryInfoDaoImpl implements RegisterDeliveryInfoDao {
 	public Map<String, Object> getEnterpriseInfo(String enterpriseUserKey) {
 		return sqlSessionTemplate.selectOne(NAMESPACE + "getEnterpriseInfo", enterpriseUserKey);
 	}
+
+	@Override
+	public String isInvokingBlockChainForDelivery(String deliveryId) {
+		return sqlSessionTemplate.selectOne(NAMESPACE + "isInvokingBlockChainForDelivery", deliveryId);
+	}
 	
 }
