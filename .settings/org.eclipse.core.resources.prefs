@@ -2,3 +2,4 @@ eclipse.preferences.version=1
 encoding//src/main/java/com/inter/consumer/service/impl/SendCertificationCodeServiceImpl.java=UTF-8
 encoding//src/main/java/com/inter/enterprise/service/impl/SendMailFmsServiceImpl.java=UTF-8
 encoding//src/main/java/com/inter/util/HttpUtil.java=UTF-8
+encoding/README.md=UTF-8

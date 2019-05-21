@@ -97,10 +97,10 @@
 		<property name="locations">
 			<list>
 			<!-- 
-				<value>file:/opt/tomcat7/dbProp/icsEnterprise.properties</value>
 			 	<value>file:d:/icsEnterprise.properties</value>
-				 -->
 				<value>file:/var/lib/tomcat8/dbProp/icsEnterprise.properties</value>
+				 -->
+				<value>file:/opt/tomcat7/dbProp/icsEnterprise.properties</value>
 			</list>
 		</property>
 	</bean>
