@@ -683,7 +683,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		            AND comm_cd_val_desc = 'detail') AS comm
 		WHERE     b.order_seq = a.order_seq
 		      AND a.app_user_id = #{appUserId}
-		      AND a.rgst_ymd BETWEEN date_format(date_add(#{currentDate}, INTERVAL -1 MONTH), '%Y%m%d')
+		      AND a.rgst_ymd BETWEEN date_format(DATE_ADD(#{currentDate}, INTERVAL -1 MONTH), '%Y%m%d')
 		                         AND #{currentDate}
 		      AND a.country_cd = #{countryCode}
 		ORDER BY a.AT_DATE DESC

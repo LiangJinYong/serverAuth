@@ -24,8 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.google.gson.Gson;
-import com.inter.consumer.dao.GetSpecifiedSequenceDao;
 import com.inter.enterprise.dao.EnterprisePhysicalDistributionDao;
+import com.inter.enterprise.dao.GetSpecifiedSequenceDao;
 import com.inter.enterprise.dao.RegisterDeliveryInfoDao;
 import com.inter.enterprise.service.EnterprisePhysicalDistributionService;
 import com.inter.util.ResultMessageUtil;
@@ -52,14 +52,34 @@ public class EnterprisePhysicalDistributionServiceImpl implements EnterprisePhys
 
 	// package related types
 	private final String[] typesDeleteParentRel = { "WH", "RL", "SL", "TB", "DV", "UL" };
+	
+	@Override
+	public String getReleaseListInfo(Map<String, String> param) {
+		Map<String, Object> result = new HashMap<String, Object>();
+		Gson gson = new Gson();
+		
+		Map<String, Object> appEnterpriseUser = enterprisePhysicalDistributionDao.queryAppEnterpriseUserByToken(param);
+
+		if (appEnterpriseUser != null ) {
+			List<Map<String, Object>> releaseList = enterprisePhysicalDistributionDao.getReleaseList();
+			result.put("data", releaseList);
+			result.put("resultCode", 200);
+		} else {
+			result.put("resultCode", 403);
+		}
+		
+		messageUtil.addResultMsg(param, result);
+
+		return gson.toJson(result);
+	}
 
 	@Transactional
 	public String physicalDistribution(Map<String, String> param) {
 
 		Map<String, Object> result = new HashMap<String, Object>();
-		Map<String, Object> appEnterpriseUser = enterprisePhysicalDistributionDao.queryAppEnterpriseUserByToken(param);
-
 		Gson gson = new Gson();
+
+		Map<String, Object> appEnterpriseUser = enterprisePhysicalDistributionDao.queryAppEnterpriseUserByToken(param);
 
 		boolean isFMS = param.containsKey("FMS");
 
@@ -86,7 +106,7 @@ public class EnterprisePhysicalDistributionServiceImpl implements EnterprisePhys
 					
 					String typeDb = enterprisePhysicalDistributionDao.queryCurrentLogisticsType(sequence);
 					
-					if (typeDb != null && typeDb.equals(typeParam) && !"UP".equals(typeParam)) {
+					if (typeDb != null && typeDb.equals(typeParam) && !"PG".equals(typeParam)) {
 						result.put("resultCode", 418);
 						messageUtil.addResultMsg(param, result);
 						return gson.toJson(result);
@@ -154,7 +174,42 @@ public class EnterprisePhysicalDistributionServiceImpl implements EnterprisePhys
 					
 					updateSequenceStatus(involvedSeqs, typeParam);
 					
-					registerLogisticsData(paramObj, involvedSeqs, blockChainYn);
+					String releaseId = param.get("releaseId");
+					
+					if (releaseId != null && !"0".equals(releaseId)) {
+						Map<String, Object> enterpriseAddressInfo;
+						if (isFMS) {
+							enterpriseAddressInfo = enterprisePhysicalDistributionDao.getEnterpriseAddressInfoByUserKey(param);
+						} else {
+							enterpriseAddressInfo = enterprisePhysicalDistributionDao.getEnterpriseAddressInfoByToken(param);
+						}
+						
+						Map<String, Object> picoReleaseMap = new HashMap<>();
+						picoReleaseMap.putAll(paramObj);
+						picoReleaseMap.putAll(enterpriseAddressInfo);
+						
+						registerLogisticsData(picoReleaseMap, involvedSeqs, blockChainYn);
+					} else {
+						registerLogisticsData(paramObj, involvedSeqs, blockChainYn);
+					}
+					
+					
+					if (releaseId != null && !"0".equals(releaseId)) {
+						Map<String, Object> releaseAddressInfo = enterprisePhysicalDistributionDao.getReleaseAddressInfoByReleaseId(releaseId);
+						
+						Map<String, Object> autoWarehousingMap = new HashMap<>();
+						autoWarehousingMap.putAll(paramObj);
+						autoWarehousingMap.putAll(releaseAddressInfo);
+						autoWarehousingMap.put("type", "WH");
+						autoWarehousingMap.put("province", null);
+						autoWarehousingMap.put("city", null);
+						autoWarehousingMap.put("district", null);
+						autoWarehousingMap.put("autoWarehousing", "autoWarehousing");
+						
+						registerLogisticsData(autoWarehousingMap, involvedSeqs, blockChainYn);
+						
+						updateSequenceStatus(involvedSeqs, "WH");
+					}
 					
 					if ("UP".equals(typeParam)) {
 						List<String> unpackingChildSeqs = new ArrayList<>();
@@ -370,4 +425,5 @@ public class EnterprisePhysicalDistributionServiceImpl implements EnterprisePhys
 		jsonObj.put("corp_user_nm", getString(paramObj.get("enterpriseUserNm")));
 		return jsonObj.toString();
 	}
+
 }

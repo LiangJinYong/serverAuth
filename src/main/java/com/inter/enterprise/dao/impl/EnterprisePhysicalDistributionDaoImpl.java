@@ -25,6 +25,11 @@ public class EnterprisePhysicalDistributionDaoImpl implements EnterprisePhysical
 	}
 	
 	@Override
+	public List<Map<String, Object>> getReleaseList() {
+		return orderSqlSession.selectList(NAMESPACE + "getReleaseList");
+	}
+	
+	@Override
 	public List<String> selectDescendentSeqsInclusive(String sequence) {
 		return orderSqlSession.selectList(NAMESPACE + "selectDescendentSeqsInclusive", sequence);
 	}
@@ -97,5 +102,21 @@ public class EnterprisePhysicalDistributionDaoImpl implements EnterprisePhysical
 	public String queryCurrentLogisticsType(String sequence) {
 		return orderSqlSession.selectOne(NAMESPACE + "queryCurrentLogisticsType", sequence);
 	}
+
+	@Override
+	public Map<String, Object> getReleaseAddressInfoByReleaseId(String releaseId) {
+		return orderSqlSession.selectOne(NAMESPACE + "getReleaseAddressInfoByReleaseId", releaseId);
+	}
+
+	@Override
+	public Map<String, Object> getEnterpriseAddressInfoByUserKey(Map<String, String> param) {
+		return orderSqlSession.selectOne(NAMESPACE + "getEnterpriseAddressInfoByUserKey", param);
+	}
+
+	@Override
+	public Map<String, Object> getEnterpriseAddressInfoByToken(Map<String, String> param) {
+		return orderSqlSession.selectOne(NAMESPACE + "getEnterpriseAddressInfoByToken", param);
+	}
+
 
 }

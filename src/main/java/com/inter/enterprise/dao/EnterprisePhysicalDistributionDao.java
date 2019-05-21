@@ -6,6 +6,8 @@ import java.util.Map;
 public interface EnterprisePhysicalDistributionDao {
 
 	Map<String, Object> queryAppEnterpriseUserByToken(Map<String, String> param);
+	
+	List<Map<String, Object>> getReleaseList();
 
 	void updateSequenceStatus(Map<String, Object> param);
 
@@ -36,4 +38,11 @@ public interface EnterprisePhysicalDistributionDao {
 	String queryCurrentLogisticsType(String sequence);
 	
 	void updateSequenceDates(Map<String, String> paramMap);
+
+	Map<String, Object> getReleaseAddressInfoByReleaseId(String releaseId);
+
+	Map<String, Object> getEnterpriseAddressInfoByUserKey(Map<String, String> param);
+
+	Map<String, Object> getEnterpriseAddressInfoByToken(Map<String, String> param);
+
 }

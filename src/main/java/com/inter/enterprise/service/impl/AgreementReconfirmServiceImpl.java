@@ -8,8 +8,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.google.gson.Gson;
-import com.inter.consumer.dao.GetSpecifiedSequenceDao;
 import com.inter.enterprise.dao.AgreementReconfirmDao;
+import com.inter.enterprise.dao.GetSpecifiedSequenceDao;
 import com.inter.enterprise.service.AgreementReconfirmService;
 import com.inter.util.ResultMessageUtil;
 
@@ -46,6 +46,7 @@ public class AgreementReconfirmServiceImpl implements AgreementReconfirmService 
 				result.put("resultCode", 403);
 			}
 		} catch (Exception e) {
+			e.printStackTrace();
 			result.put("resultCode", 500);
 		}
 		

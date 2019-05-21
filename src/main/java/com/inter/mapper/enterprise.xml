@@ -8,439 +8,509 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	<!-- Version Check -->
 	<select id="getVersionCheckInfo" parameterType="map" resultType="hashmap">
 		/* getVersionCheckInfo */
-		SELECT MAX(a.current_version_code) as currentVersionCode, MAX(a.current_version_name) as currentVersionName, 
-			(SELECT IFNULL(SUM(b.is_forced_update), 0)
-	        FROM app_enterprise_version b
-	        WHERE b.os_type = #{osType}
-	        AND b.current_version_code > #{currentVersionCode}
-	       	) as isForceUpdate 
+		SELECT MAX(a.current_version_code) as currentVersionCode,
+		MAX(a.current_version_name) as currentVersionName,
+		(SELECT IFNULL(SUM(b.is_forced_update), 0)
+		FROM app_enterprise_version b
+		WHERE b.os_type = #{osType}
+		AND b.current_version_code > #{currentVersionCode}
+		) as isForceUpdate
 		FROM app_enterprise_version a
 		WHERE a.os_type = #{osType}
 	</select>
-	
+
 	<select id="getEncrptedKey" resultType="string">
 		/* getEncrptedKey */
 		SELECT comm_cd_val_nm encryptedKey
 		FROM licom_comm_cd_dtl
-		WHERE comm_cd_id	= 'CRYPT_KEY'
-		AND eff_end_dt		= '99991231'
+		WHERE comm_cd_id = 'CRYPT_KEY'
+		AND eff_end_dt = '99991231'
 	</select>
-	
+
 	<!-- Signup Superuser -->
 	<select id="getCurrentMailCount" parameterType="string" resultType="int">
 		/* getCurrentMailCount */
 		SELECT COUNT(*) FROM app_enterprise WHERE mail = #{currentMail}
 	</select>
-	
+
 	<select id="getCurrentIdCount" parameterType="string" resultType="int">
 		/* getCurrentIdCount */
 		SELECT COUNT(*) FROM app_enterprise_user WHERE id = #{currentId}
 	</select>
-	
+
 	<insert id="insertAppEnterprise" parameterType="map">
 		/* insertAppEnterprise */
 		INSERT INTO app_enterprise
-        (enterprise_key, name, registration_number, corporate_body_name, mobile_phone_number, address, website, mail, phone_number, type, reg_time)
-        VALUES
-        (null, #{name}, #{registrationNumber}, #{corporateBodyName}, #{mobilePhoneNumber}, #{address}, #{website}, #{mail}, #{phoneNumber}, #{type}, #{time})
-        <selectKey resultType="int" keyProperty="enterpriseKey" order="AFTER">
-        	SELECT LAST_INSERT_ID()
-        </selectKey>
+		(enterprise_key, name, registration_number, corporate_body_name, mobile_phone_number, address, website, mail, phone_number, type, reg_time)
+		VALUES
+		(null, #{name}, #{registrationNumber}, #{corporateBodyName}, #{mobilePhoneNumber}, #{address}, #{website}, #{mail}, #{phoneNumber}, #{type}, #{time})
+		<selectKey resultType="int" keyProperty="enterpriseKey" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
 	</insert>
-	
+
 	<insert id="insertAppEnterpriseUser" parameterType="map">
 		/* insertAppEnterpriseUser */
-		INSERT INTO app_enterprise_user 
-		(enterprise_user_key, enterprise_key, id, password, name, auth, agree_id, reg_time) 
-		VALUES 
+		INSERT INTO app_enterprise_user
+		(enterprise_user_key, enterprise_key, id, password, name, auth, agree_id, reg_time)
+		VALUES
 		(#{enterpriseUserKey}, #{enterpriseKey}, #{id}, #{password}, #{corporateBodyName}, 'AU00', #{agreeId}, #{time})
 	</insert>
-	
+
 	<insert id="insertAgreementInfo" parameterType="map">
 		/* insertAgreementInfo */
 		INSERT INTO app_enterprise_user_agree_info_hst
-		(AGREE_ID, ENTERPRISE_USER_KEY, MANAGE_YN, PERSONAL_INFO_YN, AUDIT_DTM) 
+		(AGREE_ID, ENTERPRISE_USER_KEY, MANAGE_YN,
+		PERSONAL_INFO_YN, AUDIT_DTM)
 		VALUES
 		(#{agreeId}, #{enterpriseUserKey}, #{manageYn}, #{personalInfoYn}, NOW())
 	</insert>
-	
+
 	<!-- Create User -->
 	<select id="queryAppEnterpriseUserByToken" parameterType="map" resultType="hashmap">
 		/* queryAppEnterpriseUserByToken */
-		SELECT enterprise_user_key, enterprise_key, auth, id, password, name FROM app_enterprise_user WHERE token = #{token}
+		SELECT enterprise_user_key, enterprise_key, auth, id, password,
+		name FROM app_enterprise_user WHERE token = #{token}
 	</select>
-	
+
 	<insert id="insertNormalAppEnterpriseUser" parameterType="map">
 		/* insertNormalAppEnterpriseUser */
-		INSERT INTO app_enterprise_user 
-		(enterprise_user_key, enterprise_key, id, password, name, auth, reg_time) 
-		VALUES 
+		INSERT INTO app_enterprise_user
+		(enterprise_user_key, enterprise_key, id, password, name, auth, reg_time)
+		VALUES
 		(#{enterpriseUserKey}, #{enterpriseKey}, #{id}, #{password}, #{name}, 'AU02', #{time})
 	</insert>
-	
+
 	<!-- Login -->
 	<select id="queryAppEnterpriseUserById" parameterType="map" resultType="hashmap">
 		/* queryAppEnterpriseUserById */
 		SELECT a.id
-		     , a.name
-		     , a.auth
-		     , a.password
-		     , a.enterprise_user_key enterpriseUserKey
-		     , b.type
-		     , CASE WHEN a.agree_id > 0
-		            THEN IFNULL((SELECT 'N'
-		                    FROM   app_terms d
-		                    WHERE  d.APP_CL_CD = '02'
-		                    AND    d.TRM_CL_CD = '02'
-		                      AND    d.country_cd = 'KR'
-		                    AND    DATE_FORMAT(a.reg_time, '%Y%m%d%H%i%s') BETWEEN d.eff_sta_dtm AND d.eff_end_dtm
-		                    AND    d.eff_end_dtm = '99991231235959'
-		                  ), 'Y')
-		            ELSE 'Y'
-		      END AS manageChgYn
-		   , CASE WHEN a.agree_id > 0
-		            THEN IFNULL((SELECT 'N'
-		                     FROM   app_terms d
-		                     WHERE  d.APP_CL_CD = '02'
-		                     AND    d.TRM_CL_CD = '01'
-		                      AND    d.country_cd = 'KR'
-		                     AND    DATE_FORMAT(a.reg_time, '%Y%m%d%H%i%s') BETWEEN d.eff_sta_dtm AND d.eff_end_dtm
-		                     AND    d.eff_end_dtm = '99991231235959'
-		                   ), 'Y')
-		            ELSE 'Y'
-		      END AS personalInfoChgYn
-			      , CASE WHEN a.agree_id > 0
-	                 THEN (SELECT c.manage_yn
-	                       FROM   app_enterprise_user_agree_info_hst c
-	                       WHERE  c.agree_id = a.agree_id
-	                 )
-	                 ELSE 'N'
-	          END AS manageYn
-	        , CASE WHEN a.agree_id > 0
-	                 THEN (SELECT c.personal_info_yn
-	                       FROM   app_enterprise_user_agree_info_hst c
-	                       WHERE  c.agree_id = a.agree_id
-	                 )
-	                 ELSE 'N'
-	          END AS perosnalInfoYn
-		FROM   app_enterprise_user a
-		     , app_enterprise      b
-		WHERE  a.enterprise_key = b.enterprise_key
-		AND    a.id             =  #{id}
+		, a.name
+		, a.auth
+		, a.password
+		, a.enterprise_user_key enterpriseUserKey
+		, b.type
+		, CASE WHEN a.agree_id > 0
+		THEN IFNULL((SELECT 'N'
+		FROM app_terms d
+		WHERE d.APP_CL_CD = '02'
+		AND d.TRM_CL_CD = '02'
+		AND d.country_cd = 'KR'
+		AND DATE_FORMAT(a.reg_time, '%Y%m%d%H%i%s') BETWEEN d.eff_sta_dtm AND d.eff_end_dtm
+		AND d.eff_end_dtm = '99991231235959'
+		), 'Y')
+		ELSE 'Y'
+		END AS manageChgYn
+		, CASE WHEN a.agree_id > 0
+		THEN IFNULL((SELECT 'N'
+		FROM app_terms d
+		WHERE d.APP_CL_CD = '02'
+		AND d.TRM_CL_CD = '01'
+		AND d.country_cd = 'KR'
+		AND DATE_FORMAT(a.reg_time, '%Y%m%d%H%i%s') BETWEEN d.eff_sta_dtm AND d.eff_end_dtm
+		AND d.eff_end_dtm = '99991231235959'
+		), 'Y')
+		ELSE 'Y'
+		END AS personalInfoChgYn
+		, CASE WHEN a.agree_id > 0
+		THEN (SELECT c.manage_yn
+		FROM app_enterprise_user_agree_info_hst c
+		WHERE c.agree_id = a.agree_id
+		)
+		ELSE 'N'
+		END AS manageYn
+		, CASE WHEN a.agree_id > 0
+		THEN (SELECT c.personal_info_yn
+		FROM app_enterprise_user_agree_info_hst c
+		WHERE c.agree_id = a.agree_id
+		)
+		ELSE 'N'
+		END AS perosnalInfoYn
+		FROM app_enterprise_user a
+		, app_enterprise b
+		WHERE a.enterprise_key = b.enterprise_key
+		AND a.id = #{id}
 	</select>
-	
+
 	<select id="getDeliveryInfo" parameterType="int" resultType="map">
 		/* getDeliveryInfo */
 		SELECT dv_id deliveryId, sequence
-        FROM app_physical_distribution
-        WHERE (SELECT type FROM app_physical_distribution WHERE enterprise_user_key = #{enterpriseUserKey} ORDER BY time DESC LIMIT 1) = 'DV'
-        AND dv_id = (SELECT MAX(dv_id) FROM app_physical_distribution WHERE enterprise_user_key = #{enterpriseUserKey})
-        ORDER BY physical_distribution_key
-        LIMIT 1
+		FROM app_physical_distribution
+		WHERE (SELECT type FROM app_physical_distribution WHERE enterprise_user_key = #{enterpriseUserKey} ORDER BY time DESC LIMIT 1) = 'DV'
+		AND dv_id = (SELECT MAX(dv_id) FROM app_physical_distribution WHERE enterprise_user_key = #{enterpriseUserKey})
+		ORDER BY physical_distribution_key
+		LIMIT 1
 	</select>
-	
+
 	<update id="updateToken" parameterType="map">
 		/* updateToken */
 		UPDATE app_enterprise_user SET token = #{token} WHERE id = #{id}
 	</update>
-	
+
 	<!-- User List -->
 	<select id="queryUserList" parameterType="int" resultType="hashmap">
 		/* queryUserList */
-		SELECT enterprise_user_key AS enterpriseUserKey, id, name, auth 
-		FROM app_enterprise_user 
+		SELECT enterprise_user_key AS enterpriseUserKey, id, name, auth
+		FROM app_enterprise_user
 		WHERE enterprise_key = #{enterpriseKey} AND auth IN ('AU02', 'AU03') ORDER BY auth ASC, name ASC
 	</select>
-	
+
 	<!-- Modify User Info -->
 	<select id="queryAppEnterpriseUserByEnterpriseUserKey" parameterType="int" resultType="hashmap">
 		/* queryAppEnterpriseUserByEnterpriseUserKey */
-		SELECT * FROM app_enterprise_user WHERE enterprise_user_key = #{enterpriseUserKey} AND (auth = 'AU02' OR auth = 'AU03')
+		SELECT * FROM app_enterprise_user WHERE
+		enterprise_user_key = #{enterpriseUserKey} AND (auth = 'AU02' OR auth = 'AU03')
 	</select>
-	
+
 	<update id="updateUserInfo" parameterType="map">
 		/* updateUserInfo */
-		UPDATE app_enterprise_user SET password = #{password}, name = #{name} WHERE enterprise_user_key = #{enterpriseUserKey}
+		UPDATE app_enterprise_user SET password = #{password}, name = #{name} WHERE enterprise_user_key =
+		#{enterpriseUserKey}
 	</update>
-	
+
 	<!-- Modify My Info -->
 	<update id="updateMyInfo" parameterType="map">
 		/* updateMyInfo */
 		UPDATE app_enterprise_user SET password = #{password}, name = #{name} WHERE token = #{token}
 	</update>
-	
+
 	<!-- Activate User -->
 	<update id="updateUserAuth" parameterType="map">
 		/* updateUserAuth */
 		UPDATE app_enterprise_user SET auth = 'AU02' WHERE enterprise_user_key = #{enterpriseUserKey}
 	</update>
-	
+
 	<!-- Deactivate User -->
 	<update id="updateUserAuthDeactivate" parameterType="map">
 		/* updateUserAuthDeactivate */
-		UPDATE app_enterprise_user SET auth = 'AU03' WHERE enterprise_user_key = #{enterpriseUserKey}
+		UPDATE app_enterprise_user SET auth = 'AU03' WHERE enterprise_user_key =
+		#{enterpriseUserKey}
 	</update>
-	
+
 	<!-- Send Mail Certification Code -->
 	<select id="queryAppEnterpriseCount" parameterType="map" resultType="int">
 		/* queryAppEnterpriseCount */
 		SELECT count(*) FROM app_enterprise WHERE mail = #{mail}
 	</select>
-	
+
 	<insert id="insertMailCertificationCode" parameterType="map">
 		/* insertMailCertificationCode */
-		INSERT INTO mail_certification_code (mail, certification_code, time) VALUES (#{mail}, #{certificationCode}, #{time})
-        ON DUPLICATE KEY
-        UPDATE certification_code = #{certificationCode}, time = #{time}, mail = #{mail}
+		INSERT INTO mail_certification_code (mail, certification_code, time) VALUES
+		(#{mail}, #{certificationCode}, #{time})
+		ON DUPLICATE KEY
+		UPDATE certification_code = #{certificationCode}, time = #{time}, mail = #{mail}
 	</insert>
-	
+
 	<!-- Confirm Mail Certification Code -->
 	<select id="queryCertificationCode" parameterType="map" resultType="hashmap">
 		/* queryCertificationCode */
-		SELECT mail_certification_code.certification_code FROM mail_certification_code WHERE mail = #{mail}
+		SELECT mail_certification_code.certification_code FROM
+		mail_certification_code WHERE mail = #{mail}
 	</select>
-	
+
 	<!-- Enterprise Physical Distribution -->
+	<select id="getReleaseList" resultType="hashmap">
+		/* getReleaseList */
+		SELECT id releaseId, abbr_name releaseName
+		FROM app_release_addr_info
+		WHERE DATE_FORMAT(CURDATE(), '%Y%m%d') BETWEEN eff_sta_dt AND eff_end_dt
+	</select>
+
 	<select id="selectBizServiceInfo" parameterType="string" resultType="hashmap">
 		/* selectBizServiceInfo */
 		SELECT loi.prod_nm AS svcNm, lbi.biz_name AS bizNm
-		FROM lian_order_info loi 
+		FROM lian_order_info loi
 		INNER JOIN app_seq seq ON loi.order_seq = seq.order_seq
 		LEFT JOIN lian_biz_info lbi
-		ON loi.biz_id = lbi.biz_id 
+		ON loi.biz_id = lbi.biz_id
 		WHERE seq.sequence = #{sequence}
 	</select>
-	
+
 	<select id="queryCurrentLogisticsType" parameterType="string" resultType="string">
 		/* queryCurrentLogisticsType */
 		SELECT seq_st_cd type FROM app_seq WHERE sequence = #{sequence}
 	</select>
-	
+
 	<insert id="insertParentChildrenRelation" parameterType="map">
 		/* insertParentChildrenRelation */
 		INSERT INTO app_seq_rel_hst (c_seq, p_seq, eff_sta_dtm, eff_end_dtm, enterprise_user_key)
 		VALUES
 		<foreach collection="childSeqList" item="childSeq" separator=", ">
-		(#{childSeq}, #{sequence}, DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'), '99991231235959', #{enterpriseUserKey})
+			(#{childSeq}, #{sequence}, DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'), '99991231235959', #{enterpriseUserKey})
 		</foreach>
 	</insert>
-	
+
 	<select id="selectDescendentSeqsInclusive" parameterType="string" resultType="string">
 		/* selectDescendentSeqsInclusive */
 		SELECT d.c_seq
 		FROM (SELECT get_child_seq_rel() AS seq
-		     FROM (SELECT @start_with := #{sequence}
-		             , @seq   := @start_with
-		         ) vars
-		     JOIN app_seq_rel_hst
-		     WHERE @seq IS NOT NULL
-		     ) func
+		FROM (SELECT @start_with := #{sequence}
+		, @seq := @start_with
+		) vars
+		JOIN app_seq_rel_hst
+		WHERE @seq IS NOT NULL
+		) func
 		JOIN app_seq_rel_hst d
 		ON func.seq = d.c_seq
 		JOIN app_seq aseq
-        ON d.c_seq = aseq.sequence
+		ON d.c_seq = aseq.sequence
 		AND d.eff_end_dtm = '99991231235959'
 		UNION
 		SELECT sequence FROM app_seq WHERE sequence = #{sequence}
 	</select>
-	
+
 	<select id="selectChildSeqsInclusive" parameterType="string" resultType="string">
 		/* selectChildSeqsInclusive */
 		SELECT c_seq
 		FROM app_seq_rel_hst hst
-		INNER JOIN app_seq seq ON hst.c_seq = seq.sequence
+		INNER JOIN app_seq seq ON
+		hst.c_seq = seq.sequence
 		WHERE hst.p_seq = #{sequence} AND hst.eff_end_dtm = '99991231235959'
 		UNION
 		SELECT sequence FROM app_seq WHERE sequence = #{sequence}
 	</select>
 	
+	<select id="getEnterpriseAddressInfoByUserKey" parameterType="map" resultType="hashmap">
+		/* getEnterpriseAddressInfoByUserKey */
+		SELECT ae.latitude, ae.longitude, ae.address fullAddress 
+		FROM app_enterprise ae 
+		LEFT JOIN app_enterprise_user aeu 
+		ON ae.enterprise_key = aeu.enterprise_key 
+		where aeu.enterprise_user_key = #{enterpriseUserKey}
+	</select>
+	
+	<select id="getEnterpriseAddressInfoByToken" parameterType="map" resultType="hashmap">
+		/* getEnterpriseAddressInfoByToken */
+		SELECT ae.latitude, ae.longitude, ae.address fullAddress 
+		FROM app_enterprise ae 
+		LEFT JOIN app_enterprise_user aeu 
+		ON ae.enterprise_key = aeu.enterprise_key 
+		WHERE aeu.token = #{token}
+	</select>
+
+	<select id="getReleaseAddressInfoByReleaseId" parameterType="string" resultType="hashmap">
+		/* getReleaseAddressInfoByReleaseId */
+		SELECT location_cd locationCd, latitude, longitude,
+		addr fullAddress
+		FROM app_release_addr_info
+		WHERE id = #{releaseId}
+	</select>
+
 	<insert id="insertLogisticsData" parameterType="map" useGeneratedKeys="true" keyProperty="physicalDistributionKey" keyColumn="physical_distribution_key">
 		/* insertLogisticsData */
 		INSERT INTO app_physical_distribution
-		(physical_distribution_key, sequence, latitude, longitude, type, time, enterprise_user_key, dv_id, province, city, district, full_address, biz_nm, svc_nm, location_cd)
+		(physical_distribution_key, sequence, latitude, longitude, type, time, enterprise_user_key, dv_id, province, city,
+		district, full_address, biz_nm, svc_nm, location_cd, release_id)
 		VALUES
-		(null, #{singleSeq}, #{latitude}, #{longitude}, #{type}, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), #{enterpriseUserKey}, #{deliveryId}, #{province}, #{city}, #{district}, #{fullAddress}, #{bizNm}, #{svcNm}, #{locationCd})
+		(null, #{singleSeq}, #{latitude}, #{longitude}, #{type},
+		<choose>
+			<when test="releaseId != null and releaseId != '0' and type == 'WH'">
+				DATE_ADD(DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), INTERVAL (SELECT comm_cd_val_nm warehousingInterval FROM licom_comm_cd_dtl WHERE comm_cd_id =
+				'APP_RELEASE_ADD_DT') DAY)
+			</when>
+			<otherwise>
+				DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+			</otherwise>
+		</choose>
+		, #{enterpriseUserKey}, #{deliveryId}, #{province}, #{city}, #{district}, #{fullAddress}, #{bizNm}, #{svcNm}, #{locationCd}, #{releaseId})
 	</insert>
-	
+
 	<update id="updateSequenceRelationByParent" parameterType="map">
 		/* updateSequenceRelationByParent */
-		UPDATE app_seq_rel_hst 
-		SET eff_end_dtm = DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'), term_rsn_cd = #{type} 
+		UPDATE app_seq_rel_hst
+		SET eff_end_dtm = DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'), term_rsn_cd = #{type}
 		WHERE p_seq = #{sequence} AND eff_end_dtm = '99991231235959'
 	</update>
-	
+
 	<update id="deleteSequenceRelation" parameterType="map">
 		/* deleteSequenceRelation */
 		UPDATE app_seq_rel_hst SET
 		<if test='packageStatus == "PG"'>
-		eff_end_dtm = DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'),
+			eff_end_dtm = DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'),
 		</if>
 		term_rsn_cd = #{type} WHERE c_seq = #{sequence} ORDER BY eff_end_dtm DESC LIMIT 1
 	</update>
-	
+
 	<update id="updateSequenceStatus" parameterType="map">
 		/* updateSequenceStatus */
 		UPDATE app_seq SET seq_st_cd = #{type} WHERE sequence IN (
 		<foreach collection="seqList" item="sequence" separator=", ">
-		#{sequence}
+			#{sequence}
 		</foreach>
 		)
 	</update>
-	
+
 	<select id="isInvokingBlockChain" parameterType="string" resultType="string">
 		/* isInvokingBlockChain */
-		SELECT loi.blk_yn 
-		FROM app_seq seq 
-		INNER JOIN lian_order_info loi 
-		ON seq.order_seq = loi.order_seq 
+		SELECT loi.blk_yn
+		FROM app_seq seq
+		INNER JOIN lian_order_info loi
+		ON seq.order_seq = loi.order_seq
 		WHERE seq.sequence = #{firstSeq}
 	</select>
-	
+
 	<select id="hasParentSeq" parameterType="string" resultType="string">
 		/* hasParentSeq */
 		SELECT (CASE WHEN COUNT(*) > 0 THEN 'Y' ELSE 'N' END) hasParent
-		FROM app_seq_rel_hst 
-		WHERE c_seq = #{sequence} 
+		FROM app_seq_rel_hst
+		WHERE c_seq = #{sequence}
 		AND eff_end_dtm = 99991231235959
 	</select>
-	
+
 	<update id="removeParentRelation" parameterType="map">
 		/* removeParentRelation */
-		UPDATE app_seq_rel_hst 
+		UPDATE app_seq_rel_hst
 		SET eff_end_dtm = DATE_FORMAT(NOW(), '%Y%m%d%H%i%s')
-		, term_rsn_cd = #{type} 
+		, term_rsn_cd = #{type}
 		WHERE c_seq = #{sequence}
-		AND  eff_end_dtm = '99991231235959'
+		AND eff_end_dtm = '99991231235959'
 	</update>
-	
+
 	<select id="getAllDescendentSeqs" parameterType="string" resultType="string">
 		/* getAllDescendentSeqs */
 		SELECT d.c_seq
 		FROM (SELECT get_child_seq_rel() AS seq
-		     FROM (SELECT @start_with := #{sequence}
-		             , @seq   := @start_with
-		         ) vars
-		     JOIN app_seq_rel_hst
-		     WHERE @seq IS NOT NULL
-		     ) func
+		FROM (SELECT @start_with := #{sequence}
+		, @seq := @start_with
+		) vars
+		JOIN app_seq_rel_hst
+		WHERE @seq IS NOT NULL
+		) func
 		JOIN app_seq_rel_hst d
 		ON func.seq = d.c_seq
 		AND d.eff_end_dtm = '99991231235959'
 	</select>
-	
+
 	<update id="removeParentAndDescendentRelation" parameterType="map">
 		/* removeParentAndDescendentRelation */
-		UPDATE app_seq_rel_hst 
+		UPDATE app_seq_rel_hst
 		SET eff_end_dtm = DATE_FORMAT(NOW(), '%Y%m%d%H%i%s')
 		, term_rsn_cd = 'UP'
 		WHERE c_seq IN (
 		<foreach collection="unpackingChildSeqs" item="sequence" separator=", ">
 			#{sequence}
 		</foreach>
-		) AND  eff_end_dtm = '99991231235959'
+		) AND eff_end_dtm = '99991231235959'
 	</update>
-	
+
 	<select id="queryManufactureType" parameterType="map" resultType="string">
 		/* queryManufactureType */
 		SELECT e.type
 		FROM app_enterprise e
-		INNER JOIN app_enterprise_user u ON e.enterprise_key = u.enterprise_key
+		INNER JOIN app_enterprise_user u ON
+		e.enterprise_key = u.enterprise_key
 		WHERE u.token = #{token}
 	</select>
-	
+
 	<update id="updateSequenceDates" parameterType="map">
 		/* updateSequenceDates */
-		UPDATE app_seq SET PROD_MAKE_DT = #{prodMakeDate}, PROD_OUT_DT = #{prodReleaseDtm}, PROD_EXP_DT = #{codeExpireDt} WHERE sequence = #{singleSeq}
+		UPDATE app_seq SET PROD_MAKE_DT = #{prodMakeDate}, PROD_OUT_DT = #{prodReleaseDtm}, PROD_EXP_DT =
+		#{codeExpireDt} WHERE sequence = #{singleSeq}
 	</update>
-	
+
 	<select id="getDistInfo" parameterType="map" resultType="hashmap">
 		/* getDistInfo */
 		SELECT e.enterprise_key enterpriseKey
 		, e.corporate_body_name enterpriseNm
 		, eu.name enterpriseUserNm
-		, (SELECT COMM_CD_VAL_NM FROM licom_comm_cd_dtl WHERE COMM_CD_ID = 'SEQ_ST_CD' AND COUNTRY_CD = IFNULL(#{countryCode}, 'KR') AND EFF_END_DT = '99991231' and COMM_CD_VAL = #{type}) distTypeNm
+		, (SELECT COMM_CD_VAL_NM FROM licom_comm_cd_dtl WHERE COMM_CD_ID = 'SEQ_ST_CD' AND COUNTRY_CD = IFNULL(#{countryCode}, 'KR') AND EFF_END_DT = '99991231' and COMM_CD_VAL =
+		#{type}) distTypeNm
 		, (SELECT loi.PROD_NM FROM app_seq seq INNER JOIN lian_order_info loi ON seq.ORDER_SEQ = loi.ORDER_SEQ WHERE seq.SEQUENCE = #{singleSeq}) prodNm
-		, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s') time
+		,
+		<choose>
+			<when test="autoWarehousing != null">
+				DATE_ADD(DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), INTERVAL (SELECT comm_cd_val_nm warehousingInterval FROM licom_comm_cd_dtl WHERE comm_cd_id =
+				'APP_RELEASE_ADD_DT') DAY)
+			</when>
+			<otherwise>
+				DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+			</otherwise>
+		</choose>
+		time
 		, e.type enterpriseType
-        , (SELECT comm_cd_val_nm FROM licom_comm_cd_dtl WHERE comm_cd_id = 'DASH_ENTER_TYPE' AND country_cd = IFNULL(#{countryCode}, 'KR') AND EFF_END_DT = '99991231' AND COMM_CD_VAL = e.type) enterpriseTypeName
+		, (SELECT comm_cd_val_nm FROM licom_comm_cd_dtl WHERE comm_cd_id = 'DASH_ENTER_TYPE' AND country_cd = IFNULL(#{countryCode}, 'KR') AND EFF_END_DT = '99991231' AND COMM_CD_VAL =
+		e.type) enterpriseTypeName
 		FROM app_enterprise e
 		INNER JOIN app_enterprise_user eu
 		ON e.enterprise_key = eu.enterprise_key
 		WHERE enterprise_user_key = #{enterpriseUserKey}
 	</select>
-	
+
 	<!-- Enterprise Physical Distribution List -->
 	<select id="queryPhysicalDistributionList" parameterType="map" resultType="hashmap">
 		/* queryPhysicalDistributionList */
-        SELECT apd.latitude, apd.longitude, ae.name AS enterpriseName, apd.time, aeu.name AS enterpriseUserName, apd.type AS productDistributionType, province, city, district, full_address AS fullAddress
-        FROM app_physical_distribution apd
-        LEFT JOIN app_enterprise_user aeu ON aeu.enterprise_user_key = apd.enterprise_user_key
-        LEFT JOIN app_enterprise ae ON aeu.enterprise_key = ae.enterprise_key
-        WHERE apd.SEQUENCE = #{sequence}
-        ORDER BY apd.time DESC
+		SELECT apd.latitude, apd.longitude, ae.name AS enterpriseName, apd.time, aeu.name AS enterpriseUserName, apd.type AS productDistributionType, province, city, district, full_address AS
+		fullAddress
+		FROM app_physical_distribution apd
+		LEFT JOIN app_enterprise_user aeu ON aeu.enterprise_user_key = apd.enterprise_user_key
+		LEFT JOIN app_enterprise ae ON aeu.enterprise_key = ae.enterprise_key
+		WHERE apd.SEQUENCE = #{sequence}
+		ORDER BY apd.time DESC
 	</select>
-	
-	<!-- Enterprise Physical Distribution EnterpriseList  -->
+
+	<!-- Enterprise Physical Distribution EnterpriseList -->
 	<select id="queryPhysicalDistributionHistoryList" parameterType="map" resultType="hashmap">
 		/* queryPhysicalDistributionHistoryList */
 		SELECT apd.sequence, apd.svc_nm AS svcNm, apd.time, apd.biz_nm AS bizNm, apd.type
 		FROM app_physical_distribution apd
 		<if test="enterpriseUserKey == '-1'">
-		WHERE apd.enterprise_user_key = #{currentEnterpriseUserKey}
+			WHERE apd.enterprise_user_key = #{currentEnterpriseUserKey}
 		</if>
 		<if test="enterpriseUserKey != '-1'">
-		WHERE apd.enterprise_user_key = #{enterpriseUserKey}
+			WHERE apd.enterprise_user_key = #{enterpriseUserKey}
 		</if>
 		<if test="time != ''">
-		AND apd.time &lt; #{time}
+			AND apd.time &lt; #{time}
 		</if>
 		AND NOT EXISTS (SELECT 1
-                      FROM   app_seq_rel_hst asrh
-                      WHERE  asrh.p_seq = apd.sequence
-                      AND asrh.eff_end_dtm = '99991231235959'
-                      )
+		FROM app_seq_rel_hst asrh
+		WHERE asrh.p_seq = apd.sequence
+		AND asrh.eff_end_dtm = '99991231235959'
+		)
 		ORDER BY apd.time DESC
 		LIMIT 20
 	</select>
-	
+
 	<!-- Remove Parent Child Relation -->
 	<select id="getParentSequence" parameterType="string" resultType="string">
 		/* getParentSequence */
-		SELECT p_seq FROM app_seq_rel_hst WHERE c_seq = #{sequence} AND eff_end_dtm = '99991231235959'
+		SELECT p_seq FROM app_seq_rel_hst WHERE c_seq = #{sequence} AND eff_end_dtm =
+		'99991231235959'
 	</select>
-	
+
 	<delete id="deleteParentChildrenRelation" parameterType="string">
 		/* deleteParentChildrenRelation */
-		UPDATE app_seq_rel_hst SET EFF_END_DTM = DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'), TERM_RSN_CD = 'UP' WHERE eff_end_dtm = '99991231235959' AND (c_seq = #{sequence} OR p_seq = #{sequence})
+		UPDATE app_seq_rel_hst SET EFF_END_DTM = DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'),
+		TERM_RSN_CD = 'UP' WHERE eff_end_dtm = '99991231235959' AND (c_seq = #{sequence} OR p_seq = #{sequence})
 	</delete>
-	
+
 	<!-- Inventory -->
 	<select id="queryInventoryList" parameterType="string" resultType="hashmap">
 		/* queryInventoryList */
-		SELECT loi.PROD_NM svcNm, 
-		   SUM(
-		   CASE WHEN apd.TYPE = 'WH' THEN 1
-			    WHEN apd.TYPE = 'RL' THEN -1
-			    WHEN apd.TYPE = 'SL' THEN -1
-			    WHEN apd.TYPE = 'TB' THEN 1
-			    ELSE 0
-		   END
-		   ) AS totalCount
-		  FROM app_enterprise_user aeu  
-		       INNER JOIN app_physical_distribution apd ON aeu.enterprise_user_key = apd.enterprise_user_key 
-		       INNER JOIN app_seq asq ON asq.SEQUENCE = apd.SEQUENCE
-		       INNER JOIN lian_order_info loi ON loi.ORDER_SEQ = asq.ORDER_SEQ
-		 WHERE aeu.enterprise_key = (SELECT enterprise_key FROM app_enterprise_user WHERE id = #{userId})
-		   AND NOT EXISTS (SELECT 1 FROM app_seq_rel_hst rel WHERE apd.SEQUENCE = rel.p_seq)
-		 GROUP BY loi.PROD_NM
+		SELECT loi.PROD_NM svcNm,
+		SUM(
+		CASE WHEN apd.TYPE = 'WH' THEN 1
+		WHEN apd.TYPE = 'RL' THEN -1
+		WHEN apd.TYPE = 'SL' THEN -1
+		WHEN apd.TYPE = 'TB' THEN 1
+		ELSE 0
+		END
+		) AS totalCount
+		FROM app_enterprise_user aeu
+		INNER JOIN app_physical_distribution apd ON aeu.enterprise_user_key = apd.enterprise_user_key
+		INNER JOIN app_seq asq ON asq.SEQUENCE = apd.SEQUENCE
+		INNER JOIN lian_order_info loi ON loi.ORDER_SEQ = asq.ORDER_SEQ
+		WHERE aeu.enterprise_key = (SELECT enterprise_key FROM app_enterprise_user WHERE id = #{userId})
+		AND NOT EXISTS (SELECT 1 FROM app_seq_rel_hst rel WHERE apd.SEQUENCE = rel.p_seq)
+		GROUP BY loi.PROD_NM
 	</select>
-	
+
 	<!-- Demo Data Reset -->
 	<select id="getRelationSequences" resultType="hashmap">
 		/* getRelationSequences */
 		SELECT sequence, p_sequence parentSequence FROM app_seq_rel
 	</select>
-	
+
 	<delete id="deletePhisicalDistributionData" parameterType="map">
 		/* deletePhisicalDistributionData */
 		DELETE FROM app_physical_distribution WHERE sequence IN (
@@ -449,85 +519,113 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		</foreach>
 		)
 	</delete>
-	
+
 	<update id="resetSequenceStatus" parameterType="map">
 		/* deletePhisicalDistributionData */
 		UPDATE app_seq SET SEQ_ST_CD = 'CR' WHERE sequence IN(
 		<foreach collection="allSequences" separator="," item="sequence">
 			#{sequence}
 		</foreach>
-		)	
+		)
 	</update>
-	
+
 	<delete id="deleteSequenceRelations">
 		/* deleteSequenceRelations */
 		TRUNCATE app_seq_rel
 	</delete>
-	
+
 	<!-- Demo Data Query -->
 	<select id="selectDemoData" resultType="hashmap">
 		/* selectDemoData */
 		SELECT a.p_sequence parentSequence
-		     , a.sequence sequence
-		     , c.PROD_NM svcNm
-		     , b.SEQ_ST_CD sequenceStatusCd
-		     , (SELECT d.comm_cd_val_nm
-		        FROM   licom_comm_cd_dtl d
-		        WHERE  d.comm_cd_id = 'SEQ_ST_CD'
-		        AND    d.comm_cd_val = b.SEQ_ST_CD
-		        AND    d.country_cd = 'KR'
-			   ) as sequenceStatusNm
-		FROM   app_seq_rel     a
-		     , app_seq         b
-		     , lian_order_info c
-		WHERE  a.sequence     = b.SEQUENCE
-		AND    b.ORDER_SEQ = c.ORDER_SEQ
+		, a.sequence sequence
+		, c.PROD_NM svcNm
+		, b.SEQ_ST_CD sequenceStatusCd
+		, (SELECT d.comm_cd_val_nm
+		FROM licom_comm_cd_dtl d
+		WHERE d.comm_cd_id = 'SEQ_ST_CD'
+		AND d.comm_cd_val = b.SEQ_ST_CD
+		AND d.country_cd = 'KR'
+		) as sequenceStatusNm
+		FROM app_seq_rel a
+		, app_seq b
+		, lian_order_info c
+		WHERE a.sequence = b.SEQUENCE
+		AND b.ORDER_SEQ = c.ORDER_SEQ
 		ORDER BY 1
 	</select>
-	
+
 	<!-- Agreement Reconfirm -->
 	<update id="updateUserAgreementInfo" parameterType="map">
 		/* updateUserAgreementInfo */
-		UPDATE app_enterprise_user SET agree_id = #{agreeId}, reg_time = NOW() WHERE enterprise_user_key = #{enterpriseUserKey}
+		UPDATE app_enterprise_user SET agree_id = #{agreeId}, reg_time = NOW() WHERE
+		enterprise_user_key = #{enterpriseUserKey}
 	</update>
-	
+
 	<!-- Token Check -->
 	<select id="getUserCountByIdToken" parameterType="map" resultType="int">
 		/* getUserCountByIdToken */
-		SELECT COUNT(*) FROM app_enterprise_user WHERE enterprise_user_key = #{enterpriseUserKey} and token = #{token}
+		SELECT COUNT(*) FROM app_enterprise_user WHERE enterprise_user_key =
+		#{enterpriseUserKey} and token = #{token}
 	</select>
-	
+
 	<!-- Register Delivery Info -->
 	<insert id="insertDeliveryInfo" parameterType="map">
 		/* insertDeliveryInfo */
 		INSERT INTO app_delivery_info (dv_id, delivery_dt, enterprise_user_key, longitude, latitude)
 		VALUES(#{deliveryId}, DATE_FORMAT(CURDATE(), '%Y%m%d'), #{enterpriseUserKey}, #{longitude}, #{latitude})
 	</insert>
-	
+
 	<select id="getDistInfoList" parameterType="string" resultType="hashmap">
 		/* getDistInfoList */
-		SELECT apd.physical_distribution_key physicalDistributionKey, apd.SEQUENCE sequence, loi.PROD_NM prodNm
+		SELECT apd.physical_distribution_key physicalDistributionKey, apd.SEQUENCE sequence,
+		loi.PROD_NM prodNm
 		FROM app_physical_distribution apd
 		INNER JOIN app_seq seq ON apd.SEQUENCE = seq.SEQUENCE
 		LEFT JOIN lian_order_info loi ON seq.ORDER_SEQ = loi.ORDER_SEQ
-		WHERE apd.dv_id = #{deliveryId}
+		WHERE
+		apd.dv_id = #{deliveryId}
 	</select>
-	
+
 	<select id="getEnterpriseInfo" parameterType="string" resultType="hashmap">
 		/* getEnterpriseInfo */
-		SELECT ae.corporate_body_name enterpriseNm, ae.enterprise_key enterpriseKey, aeu.name enterpriseUserNm, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s') dateTime
+		SELECT ae.corporate_body_name enterpriseNm, ae.enterprise_key enterpriseKey,
+		aeu.name enterpriseUserNm, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s') dateTime
 		FROM app_enterprise ae
 		INNER JOIN app_enterprise_user aeu ON ae.enterprise_key = aeu.enterprise_key
 		WHERE aeu.enterprise_user_key = #{enterpriseUserKey}
 	</select>
-	
+
 	<select id="isInvokingBlockChainForDelivery" parameterType="string" resultType="string">
 		/* isInvokingBlockChainForDelivery */
-		SELECT loi.blk_yn 
+		SELECT loi.blk_yn
 		FROM app_seq seq INNER JOIN lian_order_info loi ON seq.order_seq = loi.order_seq
-		WHERE seq.SEQUENCE = 
-			(SELECT sequence
-			FROM app_physical_distribution
-			WHERE dv_id = #{deliveryId} LIMIT 1)
+		WHERE seq.SEQUENCE =
+		(SELECT sequence
+		FROM app_physical_distribution
+		WHERE dv_id = #{deliveryId} LIMIT 1)
+	</select>
+
+	<!-- Get Specified Sequence -->
+	<select id="getSpecifiedSequence" parameterType="string" resultType="int">
+		/* getSpecifiedSequence */
+		SELECT NEXTVAL(#{sequenceName})
+	</select>
+
+	<!-- Get Result Message -->
+	<select id="getResultMessage" parameterType="map" resultType="string">
+		/* getResultMessage */
+		SELECT msg_ctt FROM licom_msg WHERE msg_id = #{resultCode} AND country_cd =
+		IFNULL(#{countryCode}, 'KR')
+	</select>
+
+	<select id="getCommonCodeValueName" parameterType="map" resultType="string">
+		/* getCommonCodeValueName */
+		SELECT COMM_CD_VAL_NM
+		FROM licom_comm_cd_dtl
+		WHERE COMM_CD_ID = #{codeId}
+		AND COMM_CD_VAL = #{codeValue}
+		AND COUNTRY_CD = IFNULL(#{countryCode}, 'KR')
+		AND EFF_END_DT = '99991231'
 	</select>
 </mapper>

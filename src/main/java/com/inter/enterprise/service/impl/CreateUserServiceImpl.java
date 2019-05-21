@@ -7,8 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.google.gson.Gson;
-import com.inter.consumer.dao.GetSpecifiedSequenceDao;
 import com.inter.enterprise.dao.CreateUserDao;
+import com.inter.enterprise.dao.GetSpecifiedSequenceDao;
 import com.inter.enterprise.service.CreateUserService;
 import com.inter.util.GetTimeUtil;
 import com.inter.util.ResultMessageUtil;

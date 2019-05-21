@@ -4,11 +4,11 @@
 
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.inter</groupId>
-	<artifactId>appInterfaceIntl</artifactId>
+	<artifactId>icsEnterprise</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>war</packaging>
 	<build>
-		<finalName>appInterfaceIntl</finalName>
+		<finalName>icsEnterprise</finalName>
 		<plugins>
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>

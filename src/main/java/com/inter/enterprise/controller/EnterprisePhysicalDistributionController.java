@@ -19,6 +19,19 @@ public class EnterprisePhysicalDistributionController {
 	@Autowired
 	private EnterprisePhysicalDistributionService enterprisePhysicalDistributionService;
 
+	@RequestMapping("/getReleaseListInfo")
+	@ResponseBody
+	public String getReleaseListInfo(HttpServletRequest request) {
+		Map<String, String[]> paramMap = request.getParameterMap();
+		Map<String, String> param = RequestParamUtil.getParamMap(paramMap);
+		
+		String token = request.getHeader("token");
+		param.put("token", token);
+		
+		String result = enterprisePhysicalDistributionService.getReleaseListInfo(param);
+		return result;
+	}
+	
 	@RequestMapping("/physicalDistribution")
 	@ResponseBody
 	public String physicalDistribution(HttpServletRequest request) {

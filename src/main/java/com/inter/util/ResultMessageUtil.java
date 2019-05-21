@@ -5,7 +5,8 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.inter.consumer.dao.MessageDao;
+import com.inter.enterprise.dao.MessageDao;
+
 
 @Component
 public class ResultMessageUtil {

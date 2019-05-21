@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.google.gson.Gson;
-import com.inter.consumer.dao.GetSpecifiedSequenceDao;
+import com.inter.enterprise.dao.GetSpecifiedSequenceDao;
 import com.inter.enterprise.dao.SignupSuperuserDao;
 import com.inter.enterprise.service.SignupSuperuserService;
 import com.inter.util.GetTimeUtil;
