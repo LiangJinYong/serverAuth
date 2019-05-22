@@ -300,7 +300,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		/* insertLogisticsData */
 		INSERT INTO app_physical_distribution
 		(physical_distribution_key, sequence, latitude, longitude, type, time, enterprise_user_key, dv_id, province, city,
-		district, full_address, biz_nm, svc_nm, location_cd, release_id)
+		district, full_address, biz_nm, svc_nm, location_cd
+		<if test="releaseId != null and releaseId != '0' and type == 'WH'">
+		 , release_id
+		</if>)
 		VALUES
 		(null, #{singleSeq}, #{latitude}, #{longitude}, #{type},
 		<choose>
@@ -312,7 +315,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 				DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
 			</otherwise>
 		</choose>
-		, #{enterpriseUserKey}, #{deliveryId}, #{province}, #{city}, #{district}, #{fullAddress}, #{bizNm}, #{svcNm}, #{locationCd}, #{releaseId})
+		, #{enterpriseUserKey}, #{deliveryId}, #{province}, #{city}, #{district}, #{fullAddress}, #{bizNm}, #{svcNm}, #{locationCd}
+		<if test="releaseId != null and releaseId != '0' and type == 'WH'">
+		, #{releaseId}
+		</if>)
 	</insert>
 
 	<update id="updateSequenceRelationByParent" parameterType="map">
