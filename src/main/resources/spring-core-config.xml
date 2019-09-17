@@ -13,7 +13,7 @@
             http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd">
 
 	<context:annotation-config />
-	<context:component-scan base-package="com.inter.consumer, com.inter.enterprise, com.inter.util" />
+	<context:component-scan base-package="com.inter.serverAuth, com.inter.util" />
 
 	<tx:annotation-driven transaction-manager="transactionManager" />
 
@@ -21,7 +21,7 @@
 		<property name="dataSource" ref="dataSource" />
 	</bean> 
 
-	<bean id="orderSqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+	<bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate">
 		<constructor-arg index="0" ref="sqlSessionFactory" />
 	</bean>
 	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
@@ -48,41 +48,6 @@
 	    <property name="timeBetweenEvictionRunsMillis" value="1800000"/>
 	</bean>
 	
-	<!-- Mail -->
-	<bean id="mailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
-		<!-- SMTP settings -->
-		<property name="host" value="smtp.mxhichina.com" />
-		<property name="port" value="80" />
-		<property name="username" value="lianshu@lianshukj.com" />
-		<property name="password" value="Test@2018" />
-
-		<property name="javaMailProperties">
-			<!-- additional properties specific to JavaMail -->
-			<props>
-				<prop key="mail.transport.protocol">smtp</prop>
-				<prop key="mail.smtp.auth">true</prop>
-				<prop key="mail.smtp.starttls.enable">true</prop>
-			</props>
-		</property>
-	</bean>
-
-	<bean id="mailSenderFMS" class="org.springframework.mail.javamail.JavaMailSenderImpl">
-		<!-- SMTP settings -->
-		<property name="host" value="smtp.mxhichina.com" />
-		<property name="port" value="80" />
-		<property name="username" value="lianshukj.fms@lianshukj.com" />
-		<property name="password" value="Lianshu@2017" />
-
-		<property name="javaMailProperties">
-			<!-- additional properties specific to JavaMail -->
-			<props>
-				<prop key="mail.transport.protocol">smtp</prop>
-				<prop key="mail.smtp.auth">true</prop>
-				<prop key="mail.smtp.starttls.enable">true</prop>
-			</props>
-		</property>
-	</bean>
-
 	<bean id="environmentVariablesConfiguration" class="org.jasypt.encryption.pbe.config.EnvironmentStringPBEConfig">
 		<property name="algorithm" value="PBEWithMD5AndDES" />
 		<property name="password" value="BRACE_PASS" />
@@ -97,10 +62,9 @@
 		<property name="locations">
 			<list>
 			<!-- 
-			 	<value>file:d:/icsEnterprise.properties</value>
-				<value>file:/var/lib/tomcat8/dbProp/icsEnterprise.properties</value>
+				<value>file:/var/lib/tomcat8/dbProp/serverAuth.properties</value>
 				 -->
-				<value>file:/opt/tomcat7/dbProp/icsEnterprise.properties</value>
+			 	<value>file:d:/serverAuth.properties</value>
 			</list>
 		</property>
 	</bean>

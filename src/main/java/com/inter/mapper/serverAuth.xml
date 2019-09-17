@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.inter.serverAuth">
+	
+	<!-- Register Auth Key -->
+	<select id="getDecryptedParam" parameterType="string" resultType="string">
+		/* getDecryptedParam */
+		SELECT CAST(AES_DECRYPT(UNHEX(#{param}), 'wjdvnadlswmd2019') AS CHAR) param 
+	</select>
+	
+	<insert id="insertAuthKey" parameterType="map">
+		/* insertAuthKey */
+		INSERT INTO licom_security_key (security_seq, security_key, mac_addr, ip_addr)
+		VALUES (NEXTVAL('security_seq'), #{SecurityKey}, #{MacAddr}, #{IpAddr})
+	</insert>
+
+	<!-- Register Auth Log and Verify -->
+	<select id="getSecurityKeyCount" parameterType="string" resultType="int">
+		/* getSecurityKeyCount */
+		SELECT COUNT(*) 
+		FROM licom_security_key 
+		WHERE security_key = #{securityKey}
+	</select>
+	
+	<select id="isValidSecurityKey" parameterType="string" resultType="string">
+		/* isValidSecurityKey */
+		SELECT CASE WHEN COUNT(*) > 0 THEN 'Y' ELSE 'N' END AS isValid 
+		FROM licom_security_key 
+		WHERE security_key = #{securityKey}
+		AND DATE_FORMAT(NOW(), '%Y%m%d%H%i%s') BETWEEN eff_sta_dtm AND eff_end_dtm
+	</select>
+	
+	<insert id="insertAuthLog" parameterType="map">
+		/* insertAuthLog */
+		INSERT INTO licom_security_key_use_log (log_type, security_key, mac_addr, ip_addr, at_date, run_exec, order_seq, country_cd, strt_seq, prdctn_qty, alg_ver, prt_seq, prt_optp_num, prod_typ_cd, param_logo_name, param_frame_name, red_val, green_val, blue_val, param_text, text_size, text_pos, text_color, target_img_name, ret_file_form, color_ch_val, wm_shape, dpi_val, scale_val, alpha_val1, alpha_val2, alpha_val3, res_cd)
+		VALUES ('DM', #{SecurityKey}, #{MacAddr}, #{IpAddr}, #{AtDate}, #{RunExec}, #{OrderNumber}, #{Country}, #{StartSequence}, #{Amount}, #{VersionCode}, #{PrintTrial}, #{StartImageIndex}, IFNULL(#{OrderType}, '200'), #{LogoImageName}, #{BackgroundImageName}, #{RedValue}, #{GreenValue}, #{BlueValue}, #{Text}, IFNULL(#{TextSize}, '0'), IFNULL(#{TextPosWeight}, '0'), #{TextColorValue}, #{SourceImageName}, #{Format}, IFNULL(#{Channel}, 'yuv'), IFNULL(#{WmShape}, 'sq'), IFNULL(#{Dpi}, '300'), IFNULL(#{Scale}, '6'), #{Alpha1}, #{Alpha2}, #{Alpha3}, #{resultCode})
+	</insert>
+	
+	<insert id="insertEasySamplerLog" parameterType="map">
+		/* insertEasySamplerLog */
+		INSERT INTO licom_security_key_use_log (log_type, mac_addr, ip_addr, program_ver_cd, license_cd, gen_date, expire_date, strt_seq, end_seq)
+		VALUES ('ES', #{MacAddr} #{IpAddr}, #{VersionCode}, #{LicCode}, '#{GenDate}', #{ExireData}, #{StartSequence}, #{EndSequence})
+	</insert>
+	
+	<!-- App Check -->
+	<select id="getStatusCode" parameterType="map" resultType="string">
+		/* getStatusCode */
+		SELECT  CASE WHEN COUNT(*) = 0 THEN '400' ELSE status_cd END statusCode
+		FROM licom_security_key
+		WHERE company_cd = #{companyCode}
+		AND country_cd = #{countryCode}
+		AND DATE_FORMAT(NOW(), '%Y%m%d%H%i%s') BETWEEN eff_sta_dtm AND eff_end_dtm
+	</select>
+	
+	<insert id="insertAppCheckLog" parameterType="map">
+		/* insertAppCheckLog */
+		INSERT INTO licom_security_key_use_log (log_type, country_cd, company_cd, res_cd)
+		VALUES ('APP', #{countryCode}, #{companyCode}, #{statusCode})
+	</insert>
+	
+	<!-- Message -->
+	<select id="getResultMessage" parameterType="map" resultType="string">
+		/* getResultMessage */
+		SELECT msg_ctt FROM licom_msg WHERE msg_id = #{resultCode} AND country_cd = IFNULL(#{Country}, 'US')
+	</select>
+</mapper>
